@@ -16,29 +16,14 @@ export function CouponModal({
   onClose,
   onToggleCoupon,
 }: CouponModalProps) {
-  if (!isOpen) {
-    return null
-  }
+  if (!isOpen) return null
 
   return (
-    <div
-      className="coupon-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="coupon-modal-title"
-      onClick={onClose}
-    >
+    <div className="coupon-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="coupon-modal-title" onClick={onClose}>
       <div className="coupon-modal" onClick={(event) => event.stopPropagation()}>
-        <button type="button" className="coupon-modal-close" aria-label="Fechar cupons" onClick={onClose}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6 18 18" />
-            <path d="M18 6 6 18" />
-          </svg>
-        </button>
+        <button type="button" className="coupon-modal-close" aria-label="Fechar cupons" onClick={onClose}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18" /><path d="M18 6 6 18" /></svg></button>
 
-        <h2 id="coupon-modal-title" className="coupon-modal-title">
-          Cupons disponíveis
-        </h2>
+        <h2 id="coupon-modal-title" className="coupon-modal-title">Cupons disponíveis</h2>
         <p className="coupon-modal-subtitle">
           Veja quais descontos podem ser usados na compra atual.
         </p>
@@ -63,14 +48,10 @@ export function CouponModal({
                 <div className="coupon-card-footer">
                   <div className="coupon-usage">
                     {canUse ? (
-                      <label className="coupon-select">
-                        <input
-                          type="checkbox"
+                      <label className="coupon-select"><input type="checkbox"
                           checked={isSelected}
                           onChange={() => onToggleCoupon(coupon.id)}
-                        />
-                        <span>Aplicar na compra</span>
-                      </label>
+                        /><span>Aplicar na compra</span></label>
                     ) : null}
                     <span className={canUse ? 'coupon-status coupon-status-valid' : 'coupon-status coupon-status-invalid'}>
                       {canUse ? 'Pode ser utilizado nesta compra' : 'Ainda indisponível para esta compra'}

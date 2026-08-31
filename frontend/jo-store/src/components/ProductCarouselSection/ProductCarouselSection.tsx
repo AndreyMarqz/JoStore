@@ -27,12 +27,12 @@ export function ProductCarouselSection({
       <Swiper
         modules={[Navigation, Pagination, A11y]}
         className="product-swiper"
-        slidesPerView={1.15}
-        spaceBetween={18}
+        slidesPerView={1.7}
+        spaceBetween={12}
         navigation
         pagination={{ clickable: true }}
         breakpoints={{
-          640: { slidesPerView: 2.2, spaceBetween: 20 },
+          640: { slidesPerView: 2.5, spaceBetween: 20 },
           920: { slidesPerView: 3.2, spaceBetween: 24 },
           1200: { slidesPerView: 4.15, spaceBetween: 24 },
         }}

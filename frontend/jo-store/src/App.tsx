@@ -23,6 +23,7 @@ import { CartPage } from './pages/CartPage/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage/CheckoutPage'
 import { HomePage } from './pages/HomePage/HomePage'
 import { ProfilePage } from './pages/ProfilePage/ProfilePage'
+import { ProductPage } from './pages/ProductPage/ProductPage'
 import type {
   Address,
   AdminSection,
@@ -38,26 +39,55 @@ import type {
   ViewMode,
 } from './types/store'
 import { buildProductSections, parseFormattedPrice } from './utils/store'
+import { loadStoreSession, saveStoreSession } from './utils/localStorage'
 
 function App() {
   const [productSections, setProductSections] = useState<ProductSection[]>(fallbackSections)
   const [productsError, setProductsError] = useState('')
   const [selectedProduct, setSelectedProduct] = useState<ProductCard | null>(null)
   const [selectedQuantity, setSelectedQuantity] = useState(1)
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [selectedSize, setSelectedSize] = useState('')
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => loadStoreSession()?.cartItems ?? [])
   const [toast, setToast] = useState<ToastState>(null)
   const [currentView, setCurrentView] = useState<ViewMode>('home')
   const [activeProfileSection, setActiveProfileSection] = useState<ProfileSection>('info')
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>('clients')
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
-  const [selectedCouponIds, setSelectedCouponIds] = useState<string[]>([])
-  const [paymentCards, setPaymentCards] = useState<PaymentCard[]>(initialPaymentCards)
-  const [addresses, setAddresses] = useState<Address[]>(initialAddresses)
-  const [selectedPaymentCardIds, setSelectedPaymentCardIds] = useState<string[]>([initialPaymentCards[0].id])
-  const [selectedAddressId, setSelectedAddressId] = useState(initialAddresses[0].id)
-  const [orders, setOrders] = useState<Order[]>([])
-  const [userProfile, setUserProfile] = useState<UserProfile>(emptyUserProfile)
-  const [isProfileRegistered, setIsProfileRegistered] = useState(false)
+  const [selectedCouponIds, setSelectedCouponIds] = useState<string[]>(() => loadStoreSession()?.selectedCouponIds ?? [])
+  const [paymentCards, setPaymentCards] = useState<PaymentCard[]>(() => loadStoreSession()?.paymentCards ?? initialPaymentCards)
+  const [addresses, setAddresses] = useState<Address[]>(() => loadStoreSession()?.addresses ?? initialAddresses)
+  const [selectedPaymentCardIds, setSelectedPaymentCardIds] = useState<string[]>(() => loadStoreSession()?.selectedPaymentCardIds ?? [initialPaymentCards[0].id])
+  const [selectedAddressId, setSelectedAddressId] = useState(() => loadStoreSession()?.selectedAddressId ?? initialAddresses[0].id)
+  const [orders, setOrders] = useState<Order[]>(() => loadStoreSession()?.orders ?? [])
+  const [cartAdditions, setCartAdditions] = useState(() => loadStoreSession()?.cartAdditions ?? 0)
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => loadStoreSession()?.userProfile ?? emptyUserProfile)
+  const [isProfileRegistered, setIsProfileRegistered] = useState(() => loadStoreSession()?.isProfileRegistered ?? false)
+
+  useEffect(() => {
+    saveStoreSession({
+      cartItems,
+      selectedCouponIds,
+      paymentCards,
+      addresses,
+      selectedPaymentCardIds,
+      selectedAddressId,
+      orders,
+      cartAdditions,
+      userProfile: { ...userProfile, password: '' },
+      isProfileRegistered,
+    })
+  }, [
+    addresses,
+    cartAdditions,
+    cartItems,
+    isProfileRegistered,
+    orders,
+    paymentCards,
+    selectedAddressId,
+    selectedCouponIds,
+    selectedPaymentCardIds,
+    userProfile,
+  ])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -112,9 +142,6 @@ function App() {
       return
     }
 
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') {
         return
@@ -130,7 +157,6 @@ function App() {
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [selectedProduct, isCouponModalOpen])
@@ -197,13 +223,26 @@ function App() {
   function openProductModal(product: ProductCard) {
     setSelectedProduct(product)
     setSelectedQuantity(1)
+    setSelectedSize('')
   }
 
   function closeProductModal() {
     setSelectedProduct(null)
   }
 
+  function openProductPage() {
+    if (selectedProduct) {
+      setCurrentView('product')
+    }
+  }
+
+  function closeProductPage() {
+    setSelectedProduct(null)
+    setCurrentView('home')
+  }
+
   function openHomePage() {
+    closeProductModal()
     setIsCouponModalOpen(false)
     setCurrentView('home')
   }
@@ -250,6 +289,15 @@ function App() {
       return
     }
 
+    if (cartItems.length === 0) {
+      setToast({
+        variant: 'error',
+        title: 'Carrinho vazio',
+        message: 'Adicione pelo menos um produto ao carrinho antes de finalizar a compra.',
+      })
+      return
+    }
+
     setIsCouponModalOpen(false)
     setCurrentView('checkout')
   }
@@ -268,12 +316,12 @@ function App() {
     )
   }
 
-  function addProductToCart(product: ProductCard, quantityToAdd: number) {
+  function addProductToCart(product: ProductCard, quantityToAdd: number, size = selectedSize) {
     const unitPriceValue = parseFormattedPrice(product.price)
     const totalPriceValue = unitPriceValue * quantityToAdd
 
     setCartItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === product.id)
+      const existingItem = currentItems.find((item) => item.id === product.id && item.size === size)
 
       if (existingItem) {
         return currentItems.map((item) => {
@@ -301,6 +349,7 @@ function App() {
         {
           ...product,
           quantity: quantityToAdd,
+          size,
           unitPriceValue,
           totalPriceValue,
           totalPrice: totalPriceValue.toLocaleString('pt-BR', {
@@ -311,11 +360,18 @@ function App() {
       ]
     })
 
+    setCartAdditions((current) => current + quantityToAdd)
+
     return totalPriceValue
   }
 
   function handleAddToCart() {
     if (!selectedProduct || !requireRegisteredProfile()) {
+      return
+    }
+
+    if (!selectedSize) {
+      setToast({ variant: 'error', title: 'Selecione um tamanho', message: 'Escolha o tamanho antes de adicionar o produto ao carrinho.' })
       return
     }
 
@@ -336,9 +392,15 @@ function App() {
       return
     }
 
+    if (!selectedSize) {
+      setToast({ variant: 'error', title: 'Selecione um tamanho', message: 'Escolha o tamanho antes de continuar com a compra.' })
+      return
+    }
+
     addProductToCart(selectedProduct, selectedQuantity)
     closeProductModal()
-    openCheckoutPage()
+    setIsCouponModalOpen(false)
+    setCurrentView('checkout')
   }
 
   function handleUpdateCartItemQuantity(itemId: number, nextQuantity: number) {
@@ -529,8 +591,11 @@ function App() {
     setActiveProfileSection('info')
   }
 
-  function handleDeactivateProfile() {
-    setUserProfile((current) => ({ ...current, status: 'Inativo' }))
+  function handleToggleProfileStatus() {
+    setUserProfile((current) => ({
+      ...current,
+      status: current.status === 'Ativo' ? 'Inativo' : 'Ativo',
+    }))
   }
 
   function handleAdminUpdateOrderStatus(orderId: string, nextStatus: string) {
@@ -561,6 +626,7 @@ function App() {
     <div className="app-shell">
       <StoreHeader
         cartItemsCount={cartItemsCount}
+        isOverlay={currentView === 'home'}
         onHome={openHomePage}
         onOpenCart={openCartPage}
         onOpenAdmin={() => openAdminPage('clients')}
@@ -573,6 +639,21 @@ function App() {
             productSections={productSections}
             productsError={productsError}
             onProductSelect={openProductModal}
+          />
+        ) : null}
+
+        {currentView === 'product' && selectedProduct ? (
+          <ProductPage
+            product={selectedProduct}
+            quantity={selectedQuantity}
+            selectedSize={selectedSize}
+            onBack={closeProductPage}
+            onQuantityChange={setSelectedQuantity}
+            onDecrease={() => setSelectedQuantity((quantity) => Math.max(1, quantity - 1))}
+            onIncrease={() => setSelectedQuantity((quantity) => quantity + 1)}
+            onSelectSize={setSelectedSize}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
           />
         ) : null}
 
@@ -627,7 +708,7 @@ function App() {
             onRequestOrderExchange={handleRequestOrderExchange}
             onRegisterProfile={handleRegisterProfile}
             onUpdateProfile={handleUpdateProfile}
-            onDeactivateProfile={handleDeactivateProfile}
+            onToggleProfileStatus={handleToggleProfileStatus}
             onShowToast={setToast}
           />
         ) : null}
@@ -636,6 +717,7 @@ function App() {
           <AdminPage
             clients={registeredClients}
             orders={orders}
+            cartAdditions={cartAdditions}
             activeSection={activeAdminSection}
             onSelectSection={setActiveAdminSection}
             onUpdateOrderStatus={handleAdminUpdateOrderStatus}
@@ -644,14 +726,9 @@ function App() {
       </main>
 
       <ProductModal
-        product={selectedProduct}
-        quantity={selectedQuantity}
+        product={currentView === 'product' ? null : selectedProduct}
         onClose={closeProductModal}
-        onQuantityChange={setSelectedQuantity}
-        onDecrease={() => setSelectedQuantity((quantity) => Math.max(1, quantity - 1))}
-        onIncrease={() => setSelectedQuantity((quantity) => quantity + 1)}
-        onAddToCart={handleAddToCart}
-        onBuyNow={handleBuyNow}
+        onViewProduct={openProductPage}
       />
 
       <Toast toast={toast} />

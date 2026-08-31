@@ -58,6 +58,12 @@
 .coupon-select input { width: 16px; height: 16px; margin: 0; accent-color: #1d1d1b; }
 .coupon-status { font-size: 0.86rem; font-weight: 600; }
 .coupon-status-valid { color: #0e6b3c; }
+
+.coupon-modal, .coupon-card { background: var(--color-surface); }
+.coupon-card { border-color: var(--color-border); }
+.coupon-modal-title, .coupon-name, .coupon-select { color: var(--color-text); }
+.coupon-modal-subtitle, .coupon-description, .coupon-code, .coupon-minimum { color: var(--color-text-muted); }
+.coupon-select input { accent-color: var(--faded-copper); }
 .coupon-status-invalid { color: #9b3f3f; }
 .coupon-minimum { color: #6a6a6a; font-size: 0.84rem; }
 

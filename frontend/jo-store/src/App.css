@@ -11,3 +11,5 @@
   width: 100%;
   min-width: 0;
 }
+
+.app-shell { background: var(--color-base); }

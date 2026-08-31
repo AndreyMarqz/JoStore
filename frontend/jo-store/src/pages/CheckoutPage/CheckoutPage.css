@@ -45,6 +45,42 @@
   background: #ffffff;
 }
 
+.checkout-page {
+  background: var(--color-base);
+}
+
+.checkout-panel,
+.checkout-summary-panel,
+.checkout-card-option,
+.checkout-address-option {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.checkout-panel-title,
+.checkout-order-name {
+  color: var(--color-text);
+}
+
+.checkout-page-subtitle,
+.checkout-order-detail,
+.checkout-panel-meta {
+  color: var(--color-text-muted);
+}
+
+.checkout-inline-form input,
+.checkout-inline-form select,
+.checkout-inline-form textarea {
+  background: var(--color-base);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.checkout-inline-submit {
+  background: var(--color-accent);
+  color: var(--color-text);
+}
+
 .checkout-panel {
   padding: 24px;
 }
@@ -83,6 +119,11 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+.checkout-inline-submit:hover {
+  background: #303030;
+  border-color: #303030;
 }
 
 .checkout-order-list,
@@ -195,8 +236,8 @@
   gap: 16px;
 }
 
-.checkout-split-row + .checkout-split-row,
-.checkout-summary-row + .checkout-summary-row {
+.checkout-split-row+.checkout-split-row,
+.checkout-summary-row+.checkout-summary-row {
   margin-top: 10px;
 }
 
@@ -320,6 +361,13 @@
   .checkout-card-option,
   .checkout-address-option {
     padding: 14px;
+  }
+
+  .checkout-card-option div,
+  .checkout-address-option div,
+  .checkout-order-copy {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .checkout-link-button {

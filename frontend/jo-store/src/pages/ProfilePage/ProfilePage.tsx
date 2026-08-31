@@ -23,7 +23,7 @@ type ProfilePageProps = {
   onRequestOrderExchange: (orderId: string) => void
   onRegisterProfile: (profile: UserProfile) => void
   onUpdateProfile: (profile: UserProfile) => void
-  onDeactivateProfile: () => void
+  onToggleProfileStatus: () => void
   onShowToast: (toast: Exclude<ToastState, null>) => void
 }
 
@@ -38,7 +38,7 @@ export function ProfilePage({
   onRequestOrderExchange,
   onRegisterProfile,
   onUpdateProfile,
-  onDeactivateProfile,
+  onToggleProfileStatus,
   onShowToast,
 }: ProfilePageProps) {
   const [profileForm, setProfileForm] = useState(userProfile)
@@ -143,12 +143,15 @@ export function ProfilePage({
     })
   }
 
-  function handleDeactivateProfile() {
-    onDeactivateProfile()
+  function handleToggleProfileStatus() {
+    const isInactive = userProfile.status === 'Inativo'
+    onToggleProfileStatus()
     onShowToast({
       variant: 'success',
-      title: 'Perfil inativado',
-      message: 'O perfil foi marcado como inativo.',
+      title: isInactive ? 'Perfil ativado' : 'Perfil inativado',
+      message: isInactive
+        ? 'O perfil foi marcado como ativo.'
+        : 'O perfil foi marcado como inativo.',
     })
   }
 
@@ -474,8 +477,8 @@ export function ProfilePage({
                   <button type="submit" className="order-card-action order-card-action-primary">
                     Salvar alterações
                   </button>
-                  <button type="button" className="order-card-action order-card-action-secondary" onClick={handleDeactivateProfile}>
-                    Inativar perfil
+                  <button type="button" className="order-card-action order-card-action-secondary" onClick={handleToggleProfileStatus}>
+                    {userProfile.status === 'Inativo' ? 'Ativar perfil' : 'Inativar perfil'}
                   </button>
                 </div>
               </form>

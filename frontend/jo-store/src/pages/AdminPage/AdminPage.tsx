@@ -1,4 +1,5 @@
 import { adminOrderStatusTransitions } from '../../data/storeData'
+import { AdminAnalytics } from './AdminAnalytics'
 import type { AdminSection, Order, UserProfile } from '../../types/store'
 import { formatProfilePhone, normalizeOrderStatus } from '../../utils/store'
 import './AdminPage.css'
@@ -6,6 +7,7 @@ import './AdminPage.css'
 type AdminPageProps = {
   clients: UserProfile[]
   orders: Order[]
+  cartAdditions: number
   activeSection: AdminSection
   onSelectSection: (section: AdminSection) => void
   onUpdateOrderStatus: (orderId: string, nextStatus: string) => void
@@ -14,6 +16,7 @@ type AdminPageProps = {
 export function AdminPage({
   clients,
   orders,
+  cartAdditions,
   activeSection,
   onSelectSection,
   onUpdateOrderStatus,
@@ -63,9 +66,7 @@ export function AdminPage({
                           <h3 className="profile-panel-title">{client.fullName}</h3>
                           <p className="admin-client-subtitle">{client.email}</p>
                         </div>
-                        <span className={`profile-status-badge${client.status === 'Inativo' ? ' is-inactive' : ''}`}>
-                          {client.status}
-                        </span>
+                        <span className={`profile-status-badge${client.status === 'Inativo' ? ' is-inactive' : ''}`}>{client.status}</span>
                       </div>
 
                       <div className="profile-info-grid profile-info-grid-readonly">
@@ -184,40 +185,9 @@ export function AdminPage({
                 <h2 id="admin-analytics-title" className="profile-panel-title">
                   Gráficos de análise
                 </h2>
-                <span className="profile-panel-meta">Painel BI em preparação</span>
               </div>
 
-              <div className="admin-analytics-grid">
-                <article className="admin-analytics-card">
-                  <span className="admin-analytics-label">Pedidos no período</span>
-                  <strong className="admin-analytics-value">--</strong>
-                  <p className="admin-analytics-copy">Espaço reservado para volume total de pedidos por período.</p>
-                </article>
-                <article className="admin-analytics-card">
-                  <span className="admin-analytics-label">Receita total</span>
-                  <strong className="admin-analytics-value">--</strong>
-                  <p className="admin-analytics-copy">Aqui poderemos acompanhar faturamento e ticket médio.</p>
-                </article>
-                <article className="admin-analytics-card">
-                  <span className="admin-analytics-label">Status dos pedidos</span>
-                  <strong className="admin-analytics-value">--</strong>
-                  <p className="admin-analytics-copy">Resumo futuro da distribuição entre aberto, trânsito, entregue e troca.</p>
-                </article>
-              </div>
-
-              <div className="admin-analytics-placeholder">
-                <div className="admin-analytics-chart" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <p className="admin-analytics-copy">
-                  Esta área será conectada futuramente a um dashboard/BI para analisar pedidos, clientes,
-                  faturamento, trocas e outras métricas do e-commerce.
-                </p>
-              </div>
+              <AdminAnalytics orders={orders} cartAdditions={cartAdditions} />
             </section>
           ) : null}
         </div>

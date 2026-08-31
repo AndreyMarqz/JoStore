@@ -31,6 +31,9 @@
 }
 
 .profile-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   border: 1px solid rgba(29, 29, 27, 0.08);
   background: #ffffff;
   padding: 18px;
@@ -127,6 +130,12 @@
   gap: 18px;
   margin-top: 20px;
 }
+
+.admin-client-card, .admin-chart-card, .admin-analytics-card { background: var(--color-surface); border-color: var(--color-border); }
+.admin-analytics-value, .admin-chart-heading h3 { color: var(--color-text); }
+.admin-analytics-label, .admin-analytics-copy, .admin-chart-heading p { color: var(--color-text-muted); }
+.admin-status-actions .order-card-action-primary { background: var(--color-accent); color: #ffffff; border-color: var(--color-accent); }
+.admin-status-actions .order-card-action-primary:hover { background: #303030; border-color: #303030; }
 
 .admin-client-card {
   border: 1px solid rgba(29, 29, 27, 0.08);
@@ -281,6 +290,70 @@
   line-height: 1.5;
 }
 
+.admin-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.admin-chart-card {
+  min-width: 0;
+  border: 1px solid rgba(29, 29, 27, 0.08);
+  padding: 20px;
+  background: #ffffff;
+}
+
+.admin-chart-card-wide {
+  grid-column: span 2;
+}
+
+.admin-chart-heading {
+  min-height: 48px;
+}
+
+.admin-chart-heading h3,
+.admin-chart-heading p {
+  margin: 0;
+}
+
+.admin-chart-heading h3 {
+  font-size: 1rem;
+}
+
+.admin-chart-heading p,
+.admin-chart-empty {
+  margin-top: 6px;
+  color: #666666;
+  font-size: 0.86rem;
+}
+
+.admin-recharts-container {
+  height: 250px;
+  margin-top: 18px;
+}
+
+.admin-pie-container {
+  height: 270px;
+}
+
+.admin-chart-empty {
+  display: grid;
+  height: 100%;
+  margin: 0;
+  place-items: center;
+  border: 1px dashed rgba(29, 29, 27, 0.14);
+  padding: 20px;
+  text-align: center;
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  fill: #666666;
+  color: #666666;
+  font-size: 0.78rem;
+}
+
 .admin-analytics-placeholder {
   margin-top: 20px;
   border: 1px solid rgba(29, 29, 27, 0.08);
@@ -326,6 +399,14 @@
 
   .admin-analytics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-chart-card-wide {
+    grid-column: auto;
   }
 }
 
@@ -373,6 +454,14 @@
     grid-template-columns: 1fr;
   }
 
+  .admin-chart-card {
+    padding: 18px;
+  }
+
+  .admin-recharts-container {
+    height: 220px;
+  }
+
   .admin-analytics-chart {
     min-height: 160px;
     gap: 8px;
@@ -382,5 +471,11 @@
   .order-card-action {
     width: 100%;
     min-width: 0;
+  }
+
+  .profile-field-value,
+  .admin-client-subtitle,
+  .order-card-summary-row strong {
+    overflow-wrap: anywhere;
   }
 }

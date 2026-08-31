@@ -214,13 +214,14 @@ export function CheckoutPage({
 
             <div className="checkout-order-list">
               {cartItems.map((item) => (
-                <article key={item.id} className="checkout-order-item">
+                <article key={`${item.id}-${item.size}`} className="checkout-order-item">
                   <div className={`checkout-order-media ${item.accent}`} aria-hidden="true">
                     {item.image ? <img src={item.image} alt={item.name} className="checkout-order-image" /> : <div className="product-card-placeholder" />}
                   </div>
                   <div className="checkout-order-copy">
                     <h3 className="checkout-order-name">{item.name}</h3>
                     <p className="checkout-order-detail">Quantidade: {item.quantity}</p>
+                    <p className="checkout-order-detail">Tamanho: {item.size || 'M'}</p>
                     <p className="checkout-order-detail">{item.shipping}</p>
                   </div>
                   <strong className="checkout-order-price">{item.totalPrice}</strong>
@@ -342,13 +343,8 @@ export function CheckoutPage({
                     />
                     <div>
                       <strong>{address.label}</strong>
-                      <p>{address.recipient}</p>
-                      <span>{address.residenceType}</span>
-                      <span>{address.streetType} {address.street}, {address.number}</span>
-                      <span>{address.neighborhood}</span>
-                      <span>{address.city} - {address.state}</span>
-                      <span>{address.country}</span>
-                      <span>{address.zipCode}</span>
+                      <p>{address.recipient} · {address.residenceType}</p>
+                      <span>{`${address.streetType} ${address.street}, ${address.number} · ${address.neighborhood} · ${address.city} - ${address.state} · ${address.country} · CEP ${address.zipCode}`}</span>
                       {address.notes ? <span>{address.notes}</span> : null}
                     </div>
                   </label>

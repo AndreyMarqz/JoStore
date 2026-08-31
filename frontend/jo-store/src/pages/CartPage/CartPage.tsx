@@ -59,32 +59,25 @@ export function CartPage({
                     )}
                   </div>
 
-                  <div className="cart-item-copy">
-                    <h2 className="cart-item-name">{item.name}</h2>
-                    <div className="cart-item-controls">
+                    <div className="cart-item-copy">
+                      <h2 className="cart-item-name">{item.name}</h2>
+                      <p className="cart-item-unit">Tamanho: {item.size || 'M'}</p>
+                      <div className="cart-item-controls">
                       <div className="cart-item-stepper">
-                        <button
-                          type="button"
+                        <button type="button"
                           className="cart-item-stepper-button"
                           aria-label={`Diminuir quantidade de ${item.name}`}
                           onClick={() => onUpdateItemQuantity(item.id, item.quantity - 1)}
-                        >
-                          -
-                        </button>
+                        >-</button>
                         <span className="cart-item-stepper-value">{item.quantity}</span>
-                        <button
-                          type="button"
+                        <button type="button"
                           className="cart-item-stepper-button"
                           aria-label={`Aumentar quantidade de ${item.name}`}
                           onClick={() => onUpdateItemQuantity(item.id, item.quantity + 1)}
-                        >
-                          +
-                        </button>
+                        >+</button>
                       </div>
 
-                      <button type="button" className="cart-item-remove" onClick={() => onRemoveItem(item.id)}>
-                        Remover item
-                      </button>
+                      <button type="button" className="cart-item-remove" onClick={() => onRemoveItem(item.id)}>Remover item</button>
                     </div>
                   </div>
 

@@ -30,6 +30,7 @@ export type ProductSection = {
 
 export type CartItem = ProductCard & {
   quantity: number
+  size: string
   unitPriceValue: number
   totalPriceValue: number
   totalPrice: string
@@ -41,7 +42,7 @@ export type ToastState = {
   message: string
 } | null
 
-export type ViewMode = 'home' | 'cart' | 'checkout' | 'profile' | 'admin'
+export type ViewMode = 'home' | 'product' | 'cart' | 'checkout' | 'profile' | 'admin'
 
 export type ProfileSection = 'info' | 'edit-info' | 'orders'
 export type AdminSection = 'clients' | 'orders' | 'analytics'

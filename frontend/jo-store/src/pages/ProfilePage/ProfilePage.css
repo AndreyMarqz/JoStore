@@ -6,6 +6,14 @@
   background: #ffffff;
 }
 
+.profile-page { background: var(--color-base); }
+.profile-sidebar, .profile-panel, .order-card { background: var(--color-surface); border-color: var(--color-border); }
+.profile-page-title, .profile-panel-title, .profile-field-value, .order-card-number { color: var(--color-text); }
+.profile-page-subtitle, .profile-field span, .profile-panel-meta, .order-card-date { color: var(--color-text-muted); }
+.profile-nav-button.is-active, .order-card-action-primary { background: var(--color-accent); color: var(--color-text); }
+.profile-nav-button:hover, .order-card-action-secondary:hover { background: var(--color-accent-soft); }
+.profile-field input, .profile-field select { background: var(--color-base); border-color: var(--color-border); color: var(--color-text); }
+
 .profile-page-header {
   margin-bottom: 36px;
 }
@@ -31,6 +39,9 @@
 }
 
 .profile-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   border: 1px solid rgba(29, 29, 27, 0.08);
   background: #ffffff;
   padding: 18px;
@@ -405,5 +416,11 @@
   .order-card-action {
     width: 100%;
     min-width: 0;
+  }
+
+  .profile-field-value,
+  .order-item-copy,
+  .order-card-summary-row strong {
+    overflow-wrap: anywhere;
   }
 }

@@ -1,6 +1,4 @@
-import carousel1 from '../assets/carousel-1.jpg'
-import carousel2 from '../assets/carousel-2.jpg'
-import carousel3 from '../assets/carousel-3.jpg'
+import carousel1 from '../assets/carousel1.jpg'
 import type {
   Address,
   Coupon,
@@ -10,11 +8,7 @@ import type {
   UserProfile,
 } from '../types/store'
 
-export const heroSlides = [
-  { id: 1, image: carousel1, accent: 'slide-one' },
-  { id: 2, image: carousel2, accent: 'slide-two' },
-  { id: 3, image: carousel3, accent: 'slide-three' },
-]
+export const heroImage = carousel1
 
 export const accentClasses = [
   'product-accent-one',

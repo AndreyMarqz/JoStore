@@ -10,6 +10,14 @@
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(29, 29, 27, 0.1);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.1);
+  animation: cart-toast-lifecycle 2.6s ease-in-out forwards;
+}
+
+@keyframes cart-toast-lifecycle {
+  0% { opacity: 0; transform: translateY(12px); }
+  12% { opacity: 1; transform: translateY(0); }
+  84% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(12px); }
 }
 
 .cart-toast-success { border-color: rgba(14, 107, 60, 0.18); }
@@ -34,4 +42,8 @@
     min-width: 0;
     padding: 14px 16px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-toast { animation: none; }
 }
