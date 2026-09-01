@@ -1,13 +1,16 @@
 import { Navigation, Pagination, A11y } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import type { ProductCard } from '../../types/store'
+import { isFootwearProduct } from '../../utils/store'
 import './ProductPage.css'
 
 type Props = { product: ProductCard; quantity: number; selectedSize: string; onBack: () => void; onQuantityChange: (value: number) => void; onDecrease: () => void; onIncrease: () => void; onSelectSize: (size: string) => void; onAddToCart: () => void; onBuyNow: () => void }
-const sizes = ['PP', 'P', 'M', 'G', 'GG']
+const clothingSizes = ['PP', 'P', 'M', 'G', 'GG']
+const footwearSizes = ['32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44']
 
 export function ProductPage({ product, quantity, selectedSize, onBack, onQuantityChange, onDecrease, onIncrease, onSelectSize, onAddToCart, onBuyNow }: Props) {
   const images = product.images.length ? product.images : ['']
+  const sizes = isFootwearProduct(product) ? footwearSizes : clothingSizes
   return <section className="product-page" aria-labelledby="product-page-title">
     <button type="button" className="product-page-back" onClick={onBack}>← Voltar para produtos</button>
     <div className="product-page-layout">

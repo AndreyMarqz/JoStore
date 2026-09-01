@@ -41,6 +41,7 @@ export function mapProduct(product: DummyProduct, index: number, accentClasses: 
   return {
     id: product.id,
     name: product.title,
+    category: product.category,
     description: product.description ?? 'Peça selecionada para compor a vitrine principal da JoStore.',
     price: formatPrice(product.price),
     shipping,
@@ -48,6 +49,22 @@ export function mapProduct(product: DummyProduct, index: number, accentClasses: 
     image: product.thumbnail ?? product.images?.[0] ?? '',
     images: product.images?.length ? product.images : product.thumbnail ? [product.thumbnail] : [],
   }
+}
+
+export function isFootwearProduct(product: ProductCard) {
+  if (product.category === 'mens-shoes' || product.category === 'womens-shoes') {
+    return true
+  }
+
+  const footwearNames = [
+    'calvin klein heel shoes',
+    'puma future rider trainers',
+    'nike air jordan 1 red and black',
+    'sports sneakers off white & red',
+  ]
+
+  return footwearNames.includes(product.name.toLocaleLowerCase('en-US'))
+    || /shoe|sneaker|boot|sandal|slipper|loafer|heel|trainer|air jordan/i.test(product.name)
 }
 
 export function buildProductSections(

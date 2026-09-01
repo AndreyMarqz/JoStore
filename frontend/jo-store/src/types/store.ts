@@ -14,6 +14,7 @@ export type DummyProduct = {
 export type ProductCard = {
   id: number
   name: string
+  category?: string
   description: string
   price: string
   shipping: string

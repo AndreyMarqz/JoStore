@@ -347,6 +347,71 @@
   text-align: center;
 }
 
+.admin-revenue-analysis {
+  margin-top: 20px;
+}
+
+.admin-revenue-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 190px)) minmax(220px, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.admin-filter-field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-filter-field span {
+  color: #444444;
+  font-size: 0.88rem;
+}
+
+.admin-filter-field input,
+.admin-filter-field select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(29, 29, 27, 0.18);
+  border-radius: 0;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #1d1d1b;
+  font: inherit;
+}
+
+.admin-revenue-summary {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid rgba(29, 29, 27, 0.08);
+  background: #fafafa;
+}
+
+.admin-revenue-summary span,
+.admin-revenue-summary p {
+  color: #5f5f5f;
+  font-size: 0.9rem;
+}
+
+.admin-revenue-summary strong {
+  color: #1d1d1b;
+  font-size: 1.3rem;
+}
+
+.admin-revenue-summary p {
+  justify-self: end;
+  margin: 0;
+}
+
+.admin-revenue-chart-container {
+  height: 330px;
+  margin-top: 20px;
+}
+
 .recharts-cartesian-axis-tick-value,
 .recharts-legend-item-text {
   fill: #666666;
@@ -408,6 +473,14 @@
   .admin-chart-card-wide {
     grid-column: auto;
   }
+
+  .admin-revenue-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-filter-field-product {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 820px) {
@@ -466,6 +539,27 @@
     min-height: 160px;
     gap: 8px;
     padding: 14px;
+  }
+
+  .admin-revenue-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-filter-field-product {
+    grid-column: auto;
+  }
+
+  .admin-revenue-summary {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .admin-revenue-summary p {
+    justify-self: start;
+  }
+
+  .admin-revenue-chart-container {
+    height: 250px;
   }
 
   .order-card-action {

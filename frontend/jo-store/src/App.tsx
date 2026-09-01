@@ -717,7 +717,6 @@ function App() {
           <AdminPage
             clients={registeredClients}
             orders={orders}
-            cartAdditions={cartAdditions}
             activeSection={activeAdminSection}
             onSelectSection={setActiveAdminSection}
             onUpdateOrderStatus={handleAdminUpdateOrderStatus}

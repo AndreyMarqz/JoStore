@@ -7,7 +7,6 @@ import './AdminPage.css'
 type AdminPageProps = {
   clients: UserProfile[]
   orders: Order[]
-  cartAdditions: number
   activeSection: AdminSection
   onSelectSection: (section: AdminSection) => void
   onUpdateOrderStatus: (orderId: string, nextStatus: string) => void
@@ -16,7 +15,6 @@ type AdminPageProps = {
 export function AdminPage({
   clients,
   orders,
-  cartAdditions,
   activeSection,
   onSelectSection,
   onUpdateOrderStatus,
@@ -43,7 +41,7 @@ export function AdminPage({
             Pedidos
           </button>
           <button type="button" className={`profile-nav-button${activeSection === 'analytics' ? ' is-active' : ''}`} onClick={() => onSelectSection('analytics')}>
-            Gráficos de análise
+            Gráfico de análise
           </button>
         </aside>
 
@@ -183,11 +181,11 @@ export function AdminPage({
             <section className="profile-panel" aria-labelledby="admin-analytics-title">
               <div className="profile-panel-header">
                 <h2 id="admin-analytics-title" className="profile-panel-title">
-                  Gráficos de análise
+                  Gráfico de análise
                 </h2>
               </div>
 
-              <AdminAnalytics orders={orders} cartAdditions={cartAdditions} />
+              <AdminAnalytics orders={orders} />
             </section>
           ) : null}
         </div>

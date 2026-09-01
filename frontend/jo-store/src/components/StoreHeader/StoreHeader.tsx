@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import './StoreHeader.css'
 
 type StoreHeaderProps = {
@@ -17,6 +18,16 @@ export function StoreHeader({
   onOpenAdmin,
   onOpenProfile,
 }: StoreHeaderProps) {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 520px)').matches)
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia('(max-width: 520px)')
+    const handleViewportChange = () => setIsMobile(mobileQuery.matches)
+
+    mobileQuery.addEventListener('change', handleViewportChange)
+    return () => mobileQuery.removeEventListener('change', handleViewportChange)
+  }, [])
+
   return (
     <header className={`store-header${isOverlay ? ' store-header-overlay' : ''}`}>
       <button type="button" className="store-brand" aria-label="JoStore home" onClick={onHome}>
@@ -31,7 +42,7 @@ export function StoreHeader({
         <input
           id="store-search-input"
           type="search"
-          placeholder="Buscar"
+          placeholder={isMobile ? 'Buscar' : 'O que deseja procurar hoje?'}
         />
       </form>
 

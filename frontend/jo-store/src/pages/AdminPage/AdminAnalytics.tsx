@@ -1,27 +1,12 @@
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  createHorizontalChart,
-  Legend,
-  Line,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useState } from 'react'
 import type { Order } from '../../types/store'
-import { normalizeOrderStatus } from '../../utils/store'
 
-type AdminAnalyticsProps = {
-  orders: Order[]
-  cartAdditions: number
-}
+type AdminAnalyticsProps = { orders: Order[] }
 
-const statusColors = ['#5b5bd6', '#75a9e8', '#69b998', '#e5a55e', '#c77dc4']
+type RevenueChartPoint = { date: string } & Record<string, number | string>
+
+const lineColors = ['#1d1d1b', '#9c3b3b', '#376c9d', '#47805a', '#956530', '#704987']
 
 const money = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -29,138 +14,143 @@ const money = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 0,
 })
 
-type RevenueChartPoint = {
-  label: string
-  revenue: number
-  items: number
+function parseOrderDate(value: string) {
+  const [datePart] = value.split(',')
+  const [day, month, year] = datePart.trim().split('/').map(Number)
+  return new Date(year, month - 1, day)
 }
 
-const RevenueLineChart = createHorizontalChart<RevenueChartPoint, string, number>()({
-  XAxis,
-  YAxis,
-  Tooltip,
-  Line,
-})
-
-function statusLabel(status: string) {
-  return status
-    .toLocaleLowerCase('pt-BR')
-    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase('pt-BR'))
+function toInputDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-export function AdminAnalytics({ orders, cartAdditions }: AdminAnalyticsProps) {
-  const totalRevenue = orders.reduce((total, order) => total + order.total, 0)
-  const totalItems = orders.reduce(
-    (total, order) => total + order.items.reduce((items, item) => items + item.quantity, 0),
+function fromInputDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+function getDaysInRange(startDate: Date, endDate: Date) {
+  const days: Date[] = []
+  const currentDate = new Date(startDate)
+
+  while (currentDate <= endDate) {
+    days.push(new Date(currentDate))
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+
+  return days
+}
+
+export function AdminAnalytics({ orders }: AdminAnalyticsProps) {
+  const orderDates = orders.map((order) => parseOrderDate(order.createdAt)).filter((date) => !Number.isNaN(date.getTime()))
+  const earliestOrderDate = orderDates.length ? new Date(Math.min(...orderDates.map(Number))) : new Date()
+  const latestOrderDate = orderDates.length ? new Date(Math.max(...orderDates.map(Number))) : new Date()
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState('all')
+
+  const effectiveStartDate = startDate ? fromInputDate(startDate) : earliestOrderDate
+  const effectiveEndDate = endDate ? fromInputDate(endDate) : latestOrderDate
+  const productOptions = Array.from(
+    new Map(orders.flatMap((order) => order.items.map((item) => [String(item.id), item.name]))).entries(),
+  )
+
+  const chartProducts = selectedProductId === 'all'
+    ? productOptions
+    : productOptions.filter(([id]) => id === selectedProductId)
+  const revenueByDate = new Map<string, Record<string, number>>()
+  orders.forEach((order) => {
+    const orderDate = parseOrderDate(order.createdAt)
+    if (Number.isNaN(orderDate.getTime()) || orderDate < effectiveStartDate || orderDate > effectiveEndDate) return
+
+    const selectedItems = selectedProductId === 'all'
+      ? order.items
+      : order.items.filter((item) => String(item.id) === selectedProductId)
+    if (selectedItems.length > 0) {
+      const key = toInputDate(orderDate)
+      const dailyRevenue = revenueByDate.get(key) ?? {}
+
+      selectedItems.forEach((item) => {
+        const productId = String(item.id)
+        dailyRevenue[productId] = (dailyRevenue[productId] ?? 0) + item.unitPriceValue * item.quantity
+      })
+
+      revenueByDate.set(key, dailyRevenue)
+    }
+  })
+
+  const chartData: RevenueChartPoint[] = getDaysInRange(effectiveStartDate, effectiveEndDate)
+    .map((date) => {
+      const dailyRevenue = revenueByDate.get(toInputDate(date)) ?? {}
+      return Object.fromEntries([
+        ['date', formatDate(date)],
+        ...chartProducts.map(([id]) => [id, dailyRevenue[id] ?? 0]),
+      ]) as RevenueChartPoint
+    })
+  const totalRevenue = chartData.reduce(
+    (total, point) => total + chartProducts.reduce((dailyTotal, [id]) => dailyTotal + Number(point[id]), 0),
     0,
   )
-  const statusData = Object.entries(
-    orders.reduce<Record<string, number>>((accumulator, order) => {
-      const status = normalizeOrderStatus(order.status)
-      accumulator[status] = (accumulator[status] ?? 0) + 1
-      return accumulator
-    }, {}),
-  ).map(([status, value], index) => ({
-    name: statusLabel(status),
-    value,
-    color: statusColors[index % statusColors.length],
-  }))
-
-  const funnelData = [
-    { name: 'Adicionados', value: cartAdditions },
-    { name: 'Pedidos', value: orders.length },
-    { name: 'Itens vendidos', value: totalItems },
-  ]
-
-  const orderHistory: RevenueChartPoint[] = orders
-    .slice()
-    .reverse()
-    .map((order, index) => ({
-      label: `Pedido ${index + 1}`,
-      revenue: order.total,
-      items: order.items.reduce((total, item) => total + item.quantity, 0),
-    }))
+  const selectedProductName = productOptions.find(([id]) => id === selectedProductId)?.[1] ?? 'Todos os produtos'
 
   return (
-    <>
-      <div className="admin-analytics-grid">
-        <article className="admin-analytics-card">
-          <span className="admin-analytics-label">Adições ao carrinho</span>
-          <strong className="admin-analytics-value">{cartAdditions}</strong>
-          <p className="admin-analytics-copy">Atualizado ao incluir um produto pelo modal.</p>
-        </article>
-        <article className="admin-analytics-card">
-          <span className="admin-analytics-label">Pedidos confirmados</span>
-          <strong className="admin-analytics-value">{orders.length}</strong>
-          <p className="admin-analytics-copy">Atualizado ao concluir o pagamento.</p>
-        </article>
-        <article className="admin-analytics-card">
-          <span className="admin-analytics-label">Receita acumulada</span>
-          <strong className="admin-analytics-value">{money.format(totalRevenue)}</strong>
-          <p className="admin-analytics-copy">{totalItems} item(ns) vendido(s) nesta sessão.</p>
-        </article>
+    <div className="admin-revenue-analysis">
+      <div className="admin-revenue-filters">
+        <label className="admin-filter-field">
+          <span>Data inicial</span>
+          <input type="date" value={startDate || toInputDate(earliestOrderDate)} max={endDate || toInputDate(latestOrderDate)} onChange={(event) => setStartDate(event.target.value)} />
+        </label>
+        <label className="admin-filter-field">
+          <span>Data final</span>
+          <input type="date" value={endDate || toInputDate(latestOrderDate)} min={startDate || toInputDate(earliestOrderDate)} onChange={(event) => setEndDate(event.target.value)} />
+        </label>
+        <label className="admin-filter-field admin-filter-field-product">
+          <span>Produto</span>
+          <select value={selectedProductId} onChange={(event) => setSelectedProductId(event.target.value)}>
+            <option value="all">Todos os produtos</option>
+            {productOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+        </label>
       </div>
 
-      <div className="admin-chart-grid">
-        <article className="admin-chart-card">
-          <div className="admin-chart-heading">
-            <div><h3>Fluxo de compra</h3><p>Eventos reais da sessão atual.</p></div>
-          </div>
-          <div className="admin-recharts-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={funnelData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value) => [value, 'Eventos']} cursor={{ fill: '#f1f1fb' }} />
-                <Bar dataKey="value" fill="#5b5bd6" radius={[6, 6, 0, 0]} maxBarSize={58} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="admin-chart-card">
-          <div className="admin-chart-heading">
-            <div><h3>Status dos pedidos</h3><p>Atualizado após cada mudança de status.</p></div>
-          </div>
-          <div className="admin-recharts-container admin-pie-container">
-            {statusData.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="82%" paddingAngle={3}>
-                    {statusData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => [value, 'Pedidos']} />
-                  <Legend iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : <p className="admin-chart-empty">Os status aparecerão quando o primeiro pedido for confirmado.</p>}
-          </div>
-        </article>
-
-        <article className="admin-chart-card admin-chart-card-wide">
-          <div className="admin-chart-heading">
-            <div><h3>Receita por pedido</h3><p>Valores confirmados durante a sessão.</p></div>
-          </div>
-          <div className="admin-recharts-container">
-            {orderHistory.length ? (
-              <RevenueLineChart.LineChart
-                responsive
-                data={orderHistory}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-                style={{ width: '100%', height: '100%' }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8ef" />
-                <RevenueLineChart.XAxis dataKey="label" axisLine={false} tickLine={false} />
-                <RevenueLineChart.YAxis width="auto" axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value, name) => [name === 'revenue' ? money.format(Number(value)) : value, name === 'revenue' ? 'Receita' : 'Itens']} />
-                <Legend />
-                <RevenueLineChart.Line type="monotone" dataKey="revenue" name="Receita" stroke="#5b5bd6" strokeWidth={3} />
-                <RevenueLineChart.Line type="monotone" dataKey="items" name="Itens" stroke="#69b998" strokeWidth={3} />
-              </RevenueLineChart.LineChart>
-            ) : <p className="admin-chart-empty">A receita será exibida após a confirmação de uma compra.</p>}
-          </div>
-        </article>
+      <div className="admin-revenue-summary">
+        <span>Receita no período</span>
+        <strong>{money.format(totalRevenue)}</strong>
+        <p>{selectedProductName}</p>
       </div>
-    </>
+
+      <div className="admin-recharts-container admin-revenue-chart-container">
+        {orders.length ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 12, right: 18, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e8ef" />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={(value) => `R$ ${value}`} width="auto" axisLine={false} tickLine={false} />
+              <Tooltip formatter={(value) => [money.format(Number(value)), 'Receita']} />
+              {chartProducts.length > 1 ? <Legend /> : null}
+              {chartProducts.map(([id, name], index) => (
+                <Line
+                  key={id}
+                  type="monotone"
+                  dataKey={id}
+                  name={name}
+                  stroke={lineColors[index % lineColors.length]}
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: lineColors[index % lineColors.length] }}
+                  activeDot={{ r: 6 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        ) : <p className="admin-chart-empty">A receita será exibida após o primeiro pedido.</p>}
+      </div>
+    </div>
   )
 }
