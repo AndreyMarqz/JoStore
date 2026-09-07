@@ -1,0 +1,811 @@
+openapi: 3.0.3
+info:
+  title: JoStore Customer API
+  version: 1.0.0
+  description: |
+    Contrato do módulo de gestão de clientes da JoStore.
+    Cobre RF0021 a RF0028 e RN/RNF associados ao cadastro de clientes.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Ambiente local
+tags:
+  - name: Authentication
+  - name: Customers
+  - name: Addresses
+  - name: Cards
+  - name: Transactions
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Autentica um cliente ativo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticação realizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/AuthInvalidCredentials'
+        '403':
+          $ref: '#/components/responses/AuthInactiveCustomer'
+
+  /customers:
+    post:
+      tags: [Customers]
+      operationId: createCustomer
+      summary: Cadastra um cliente
+      description: |
+        Cria o cliente e gera seu código único. A senha não é retornada.
+        O cadastro deve conter ao menos um endereço residencial, de cobrança e de entrega.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRegistrationRequest'
+      responses:
+        '201':
+          description: Cliente cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '409':
+          $ref: '#/components/responses/CustomerRegistrationConflict'
+        '422':
+          $ref: '#/components/responses/CustomerRegistrationInvalid'
+    get:
+      tags: [Customers]
+      operationId: searchCustomers
+      summary: Consulta clientes por filtros combinados ou isolados
+      parameters:
+        - $ref: '#/components/parameters/CustomerCode'
+        - $ref: '#/components/parameters/FullName'
+        - $ref: '#/components/parameters/Cpf'
+        - $ref: '#/components/parameters/Email'
+        - $ref: '#/components/parameters/CustomerStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '400':
+          $ref: '#/components/responses/CustomerSearchInvalid'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/AdminAccessRequired'
+        '200':
+          description: Página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPage'
+
+  /customers/{customerId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    get:
+      tags: [Customers]
+      operationId: getCustomer
+      summary: Consulta os dados de um cliente
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+    put:
+      tags: [Customers]
+      operationId: updateCustomer
+      summary: Altera os dados cadastrais, exceto senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdateRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '200':
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '409':
+          $ref: '#/components/responses/CustomerUpdateConflict'
+        '422':
+          $ref: '#/components/responses/CustomerUpdateInvalid'
+
+  /customers/{customerId}/password:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    patch:
+      tags: [Customers]
+      operationId: updateCustomerPassword
+      summary: Altera somente a senha do cliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordUpdateRequest'
+      responses:
+        '204':
+          description: Senha alterada
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '422':
+          $ref: '#/components/responses/PasswordUpdateInvalid'
+
+  /customers/{customerId}/status:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    patch:
+      tags: [Customers]
+      operationId: updateCustomerStatus
+      summary: Inativa ou reativa um cliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerStatusUpdateRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/AdminAccessRequired'
+        '200':
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '422':
+          $ref: '#/components/responses/CustomerStatusInvalid'
+
+  /customers/{customerId}/addresses:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    post:
+      tags: [Addresses]
+      operationId: createCustomerAddress
+      summary: Adiciona um endereço ao perfil
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '201':
+          description: Endereço adicionado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '422':
+          $ref: '#/components/responses/AddressCreateInvalid'
+
+  /customers/{customerId}/addresses/{addressId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+      - $ref: '#/components/parameters/AddressId'
+    put:
+      tags: [Addresses]
+      operationId: updateCustomerAddress
+      summary: Altera um endereço sem alterar os outros dados do cliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '200':
+          description: Endereço atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/AddressNotFound'
+        '422':
+          $ref: '#/components/responses/AddressUpdateInvalid'
+    delete:
+      tags: [Addresses]
+      operationId: deleteCustomerAddress
+      summary: Remove um endereço quando as finalidades obrigatórias permanecerem atendidas
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '204':
+          description: Endereço removido
+        '404':
+          $ref: '#/components/responses/AddressNotFound'
+        '422':
+          $ref: '#/components/responses/AddressRequiredRoleViolation'
+
+  /customers/{customerId}/cards:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    post:
+      tags: [Cards]
+      operationId: createCustomerCard
+      summary: Adiciona um cartão de crédito
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardCreateRequest'
+      responses:
+        '409':
+          $ref: '#/components/responses/CardAlreadyRegistered'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '201':
+          description: Cartão adicionado; o primeiro é preferencial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '422':
+          $ref: '#/components/responses/CardCreateInvalid'
+
+  /customers/{customerId}/cards/{cardId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+      - $ref: '#/components/parameters/CardId'
+    delete:
+      tags: [Cards]
+      operationId: deleteCustomerCard
+      summary: Remove um cartão
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '204':
+          description: Cartão removido
+        '404':
+          $ref: '#/components/responses/CardNotFound'
+
+  /customers/{customerId}/cards/{cardId}/preferred:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+      - $ref: '#/components/parameters/CardId'
+    patch:
+      tags: [Cards]
+      operationId: setPreferredCustomerCard
+      summary: Define o cartão preferencial do cliente
+      responses:
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '200':
+          description: Cartão preferencial atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '404':
+          $ref: '#/components/responses/CardNotFound'
+
+  /customers/{customerId}/transactions:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+    get:
+      tags: [Transactions]
+      operationId: listCustomerTransactions
+      summary: Consulta as transações realizadas pelo cliente
+      responses:
+        '400':
+          $ref: '#/components/responses/TransactionSearchInvalid'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '403':
+          $ref: '#/components/responses/CustomerAccessDenied'
+        '200':
+          description: Página de transações
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AddressId:
+      name: addressId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CardId:
+      name: cardId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CustomerCode:
+      name: code
+      in: query
+      schema: { type: string, example: CLI-000001 }
+    FullName:
+      name: fullName
+      in: query
+      schema: { type: string }
+    Cpf:
+      name: cpf
+      in: query
+      schema: { type: string, pattern: '^\\d{11}$' }
+    Email:
+      name: email
+      in: query
+      schema: { type: string, format: email }
+    CustomerStatus:
+      name: status
+      in: query
+      schema: { $ref: '#/components/schemas/CustomerStatus' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  responses:
+    AuthenticationRequired:
+      description: Token Bearer ausente, expirado ou inválido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            tokenMissingOrInvalid:
+              value: { status: 401, code: AUTHENTICATION_REQUIRED, message: Informe um token de acesso válido. }
+    AuthInvalidCredentials:
+      description: E-mail ou senha não correspondem a uma conta.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidCredentials:
+              value: { status: 401, code: AUTH_INVALID_CREDENTIALS, message: E-mail ou senha inválidos. }
+    AuthInactiveCustomer:
+      description: As credenciais são válidas, mas a conta está inativa.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            inactiveCustomer:
+              value: { status: 403, code: CUSTOMER_INACTIVE, message: Este cliente está inativo e não pode acessar a conta. }
+    AdminAccessRequired:
+      description: A operação exige perfil de administrador.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            adminRequired:
+              value: { status: 403, code: ADMIN_ACCESS_REQUIRED, message: Seu perfil não possui permissão para esta operação. }
+    CustomerAccessDenied:
+      description: O usuário autenticado não pode acessar ou alterar este cliente.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            accessDenied:
+              value: { status: 403, code: CUSTOMER_ACCESS_DENIED, message: Você não possui permissão para acessar estes dados. }
+    CustomerNotFound:
+      description: Não existe cliente com o identificador informado.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            customerNotFound:
+              value: { status: 404, code: CUSTOMER_NOT_FOUND, message: Cliente não encontrado. }
+    CustomerSearchInvalid:
+      description: Um filtro ou parâmetro de paginação é inválido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidPage:
+              value: { status: 400, code: PAGE_INVALID, message: O parâmetro page deve ser maior ou igual a zero., fieldErrors: [{ field: page, message: Informe um número inteiro maior ou igual a zero. }] }
+            invalidCpf:
+              value: { status: 400, code: CPF_INVALID_FORMAT, message: CPF deve conter 11 dígitos numéricos., fieldErrors: [{ field: cpf, message: Informe 11 dígitos. }] }
+    CustomerRegistrationConflict:
+      description: CPF ou e-mail já pertencem a outro cliente.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            duplicatedCpf:
+              value: { status: 409, code: CUSTOMER_CPF_ALREADY_EXISTS, message: Já existe um cliente cadastrado com este CPF., fieldErrors: [{ field: cpf, message: CPF já cadastrado. }] }
+            duplicatedEmail:
+              value: { status: 409, code: CUSTOMER_EMAIL_ALREADY_EXISTS, message: Já existe um cliente cadastrado com este e-mail., fieldErrors: [{ field: email, message: E-mail já cadastrado. }] }
+    CustomerRegistrationInvalid:
+      description: O cadastro não cumpre campos obrigatórios, senha ou endereços exigidos.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            requiredCustomerData:
+              value: { status: 422, code: CUSTOMER_REQUIRED_DATA_MISSING, message: Preencha os dados obrigatórios do cliente., fieldErrors: [{ field: phone.areaCode, message: DDD é obrigatório. }] }
+            weakPassword:
+              value: { status: 422, code: PASSWORD_WEAK, message: 'A senha deve ter ao menos 8 caracteres, letra maiúscula, minúscula e caractere especial.', fieldErrors: [{ field: password, message: Senha fora da política de segurança. }] }
+            passwordMismatch:
+              value: { status: 422, code: PASSWORD_CONFIRMATION_MISMATCH, message: Os campos de senha e confirmação devem ser iguais., fieldErrors: [{ field: confirmPassword, message: Confirmação diferente da senha. }] }
+            missingRequiredAddressRole:
+              value: { status: 422, code: ADDRESS_REQUIRED_ROLE_MISSING, message: O cliente deve possuir endereço residencial, de cobrança e de entrega., fieldErrors: [{ field: addresses, message: Inclua as três finalidades obrigatórias. }] }
+    CustomerUpdateConflict:
+      description: CPF ou e-mail já pertencem a outro cliente.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            duplicatedCpf:
+              value: { status: 409, code: CUSTOMER_CPF_ALREADY_EXISTS, message: Já existe um cliente cadastrado com este CPF. }
+            duplicatedEmail:
+              value: { status: 409, code: CUSTOMER_EMAIL_ALREADY_EXISTS, message: Já existe um cliente cadastrado com este e-mail. }
+    CustomerUpdateInvalid:
+      description: Dados pessoais em formato inválido ou campos obrigatórios ausentes.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidBirthDate:
+              value: { status: 422, code: CUSTOMER_BIRTH_DATE_INVALID, message: Data de nascimento inválida., fieldErrors: [{ field: birthDate, message: Informe uma data válida. }] }
+            invalidPhone:
+              value: { status: 422, code: CUSTOMER_PHONE_INVALID, message: Telefone inválido., fieldErrors: [{ field: phone.number, message: Informe um número de telefone válido. }] }
+    PasswordUpdateInvalid:
+      description: A alteração não cumpre as regras de senha.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            currentPasswordIncorrect:
+              value: { status: 422, code: PASSWORD_CURRENT_INVALID, message: A senha atual informada está incorreta., fieldErrors: [{ field: currentPassword, message: Senha atual inválida. }] }
+            weakPassword:
+              value: { status: 422, code: PASSWORD_WEAK, message: A nova senha não atende à política de segurança., fieldErrors: [{ field: password, message: 'Use 8 ou mais caracteres, maiúscula, minúscula e especial.' }] }
+            confirmationMismatch:
+              value: { status: 422, code: PASSWORD_CONFIRMATION_MISMATCH, message: Os campos de senha e confirmação devem ser iguais., fieldErrors: [{ field: confirmPassword, message: Confirmação diferente da nova senha. }] }
+    CustomerStatusInvalid:
+      description: O status está ausente ou não é ATIVO/INATIVO.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidStatus:
+              value: { status: 422, code: CUSTOMER_STATUS_INVALID, message: Status deve ser ATIVO ou INATIVO., fieldErrors: [{ field: status, message: Valor não permitido. }] }
+    AddressNotFound:
+      description: O endereço não pertence ao cliente ou não existe.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            addressNotFound:
+              value: { status: 404, code: ADDRESS_NOT_FOUND, message: Endereço não encontrado. }
+    AddressCreateInvalid:
+      description: Dados obrigatórios do novo endereço estão ausentes ou inválidos.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            labelRequired:
+              value: { status: 422, code: ADDRESS_LABEL_REQUIRED, message: Informe um nome curto para o endereço., fieldErrors: [{ field: label, message: Apelido do endereço é obrigatório. }] }
+            invalidAddressData:
+              value: { status: 422, code: ADDRESS_INVALID, message: Preencha todos os campos obrigatórios do endereço., fieldErrors: [{ field: zipCode, message: CEP deve conter 8 dígitos. }] }
+    AddressUpdateInvalid:
+      description: Dados do endereço são inválidos ou a alteração remove uma finalidade obrigatória.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidAddressData:
+              value: { status: 422, code: ADDRESS_INVALID, message: Preencha todos os campos obrigatórios do endereço. }
+            requiredRoleRemoved:
+              value: { status: 422, code: ADDRESS_REQUIRED_ROLE_MISSING, message: O cliente deve manter endereço residencial, de cobrança e de entrega. }
+    AddressRequiredRoleViolation:
+      description: A remoção deixaria o cliente sem uma finalidade de endereço obrigatória.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            requiredRoleRemoved:
+              value: { status: 422, code: ADDRESS_REQUIRED_ROLE_MISSING, message: Não é possível remover este endereço porque uma finalidade obrigatória deixaria de existir. }
+    CardAlreadyRegistered:
+      description: O cartão já está associado ao cliente.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            duplicateCard:
+              value: { status: 409, code: CARD_ALREADY_REGISTERED, message: Este cartão já está cadastrado para o cliente. }
+    CardCreateInvalid:
+      description: Dados do cartão são inválidos ou a bandeira não é permitida.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidNumber:
+              value: { status: 422, code: CARD_NUMBER_INVALID, message: 'Informe um número de cartão válido, com 13 a 19 dígitos.', fieldErrors: [{ field: number, message: Número de cartão inválido. }] }
+            invalidSecurityCode:
+              value: { status: 422, code: CARD_SECURITY_CODE_INVALID, message: Informe um código de segurança válido., fieldErrors: [{ field: securityCode, message: CVV deve conter 3 ou 4 dígitos. }] }
+            brandNotAllowed:
+              value: { status: 422, code: CARD_BRAND_NOT_ALLOWED, message: A bandeira informada não está cadastrada no sistema., fieldErrors: [{ field: brand, message: Bandeira não permitida. }] }
+    CardNotFound:
+      description: O cartão não pertence ao cliente ou não existe.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            cardNotFound:
+              value: { status: 404, code: CARD_NOT_FOUND, message: Cartão não encontrado. }
+    TransactionSearchInvalid:
+      description: Parâmetros de paginação de transações inválidos.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            invalidSize:
+              value: { status: 400, code: PAGE_SIZE_INVALID, message: O parâmetro size deve estar entre 1 e 100., fieldErrors: [{ field: size, message: Informe um valor entre 1 e 100. }] }
+  schemas:
+    CustomerStatus:
+      type: string
+      enum: [ATIVO, INATIVO]
+    CustomerStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/CustomerStatus'
+    AddressRole:
+      type: string
+      enum: [Residência, Cobrança, Entrega]
+    CardBrand:
+      type: string
+      enum: [Visa, Mastercard, Elo, American Express]
+    Phone:
+      type: object
+      required: [type, areaCode, number]
+      properties:
+        type: { type: string, example: Celular }
+        areaCode: { type: string, pattern: '^\\d{2}$', example: '11' }
+        number: { type: string, pattern: '^\\d{8,9}$', example: '999999999' }
+    AddressRequest:
+      type: object
+      required: [label, roles, residenceType, streetType, street, number, neighborhood, zipCode, city, state, country]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60, example: Casa }
+        roles:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/AddressRole' }
+        residenceType: { type: string, example: Casa }
+        streetType: { type: string, example: Rua }
+        street: { type: string, example: das Flores }
+        number: { type: string, example: '100' }
+        neighborhood: { type: string, example: Centro }
+        zipCode: { type: string, pattern: '^\\d{8}$', example: '01001000' }
+        city: { type: string, example: São Paulo }
+        state: { type: string, minLength: 2, maxLength: 2, example: SP }
+        country: { type: string, example: Brasil }
+        notes: { type: string, maxLength: 500 }
+    AddressResponse:
+      allOf:
+        - $ref: '#/components/schemas/AddressRequest'
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+    CardCreateRequest:
+      type: object
+      required: [holder, number, brand, securityCode]
+      properties:
+        holder: { type: string, minLength: 1, example: Ana Cliente da Silva }
+        number: { type: string, pattern: '^\\d{13,19}$', example: '4111111111111111' }
+        brand: { $ref: '#/components/schemas/CardBrand' }
+        securityCode: { type: string, pattern: '^\\d{3,4}$', example: '123' }
+    CardResponse:
+      type: object
+      required: [id, holder, brand, last4, preferred]
+      properties:
+        id: { type: string, format: uuid }
+        holder: { type: string }
+        brand: { $ref: '#/components/schemas/CardBrand' }
+        last4: { type: string, example: '1111' }
+        preferred: { type: boolean }
+    CustomerRegistrationRequest:
+      type: object
+      required: [fullName, cpf, gender, birthDate, phone, email, password, confirmPassword, addresses]
+      properties:
+        fullName: { type: string, minLength: 1, example: Ana Cliente da Silva }
+        cpf: { type: string, pattern: '^\\d{11}$', example: '12345678901' }
+        gender: { type: string, example: Feminino }
+        birthDate: { type: string, format: date, example: '1999-03-15' }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: string, format: email, example: ana@example.com }
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: Deve conter letra maiúscula, minúscula e caractere especial.
+        confirmPassword: { type: string, format: password }
+        addresses:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/AddressRequest' }
+    CustomerUpdateRequest:
+      type: object
+      required: [fullName, cpf, gender, birthDate, phone, email]
+      properties:
+        fullName: { type: string, minLength: 1 }
+        cpf: { type: string, pattern: '^\\d{11}$' }
+        gender: { type: string }
+        birthDate: { type: string, format: date }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: string, format: email }
+    PasswordUpdateRequest:
+      type: object
+      required: [currentPassword, password, confirmPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: Deve conter letra maiúscula, minúscula e caractere especial.
+        confirmPassword: { type: string, format: password }
+    CustomerResponse:
+      type: object
+      required: [id, code, fullName, cpf, gender, birthDate, phone, email, status, ranking, addresses, cards]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: CLI-000001 }
+        fullName: { type: string }
+        cpf: { type: string }
+        gender: { type: string }
+        birthDate: { type: string, format: date }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: string, format: email }
+        status: { $ref: '#/components/schemas/CustomerStatus' }
+        ranking: { type: integer, minimum: 0 }
+        addresses:
+          type: array
+          items: { $ref: '#/components/schemas/AddressResponse' }
+        cards:
+          type: array
+          items: { $ref: '#/components/schemas/CardResponse' }
+    CustomerSummary:
+      type: object
+      required: [id, code, fullName, cpf, email, status, ranking]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        fullName: { type: string }
+        cpf: { type: string }
+        email: { type: string, format: email }
+        status: { $ref: '#/components/schemas/CustomerStatus' }
+        ranking: { type: integer }
+    CustomerPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/CustomerSummary' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    TransactionResponse:
+      type: object
+      required: [id, type, occurredAt, description, amount]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, example: PURCHASE }
+        occurredAt: { type: string, format: date-time }
+        description: { type: string, example: 'Pedido #00001' }
+        amount: { type: number, format: double, example: 89.9 }
+    TransactionPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/TransactionResponse' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    LoginResponse:
+      type: object
+      required: [accessToken, tokenType, customer]
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        customer: { $ref: '#/components/schemas/CustomerResponse' }
+    ApiError:
+      type: object
+      required: [status, code, message]
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer, example: 422 }
+        code: { type: string, example: CUSTOMER_EMAIL_ALREADY_EXISTS }
+        message: { type: string, example: Já existe um cliente cadastrado com este e-mail. }
+        fieldErrors:
+          type: array
+          items: { $ref: '#/components/schemas/FieldError' }
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string, example: email }
+        message: { type: string, example: E-mail já cadastrado. }
