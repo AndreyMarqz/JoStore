@@ -12,4 +12,6 @@
   min-width: 0;
 }
 
-.app-shell { background: var(--color-base); }
+.app-shell {
+  background: var(--color-base);
+}

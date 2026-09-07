@@ -45,7 +45,6 @@ export type ToastState = {
 
 export type ViewMode = 'home' | 'product' | 'cart' | 'checkout' | 'profile' | 'admin'
 
-export type ProfileSection = 'info' | 'edit-info' | 'orders'
 export type AdminSection = 'clients' | 'orders' | 'analytics'
 
 export type Coupon = {
@@ -59,54 +58,42 @@ export type Coupon = {
   amount: number
 }
 
-export type PaymentCard = {
-  id: string
-  holder: string
-  brand: string
-  last4: string
-  expiry: string
-}
-
-export type Address = {
-  id: string
-  label: string
-  recipient: string
-  residenceType: string
-  streetType: string
-  street: string
-  number: string
-  neighborhood: string
-  city: string
-  state: string
-  country: string
-  zipCode: string
-  notes: string
-}
-
 export type Order = {
   id: string
   number: string
   createdAt: string
   status: string
   items: CartItem[]
-  paymentCards: PaymentCard[]
-  address: Address
+  paymentCards: ClientCard[]
+  address: ClientAddress
   subtotal: number
   shippingTotal: number
   discountTotal: number
   total: number
 }
 
-export type UserProfile = {
+export type ClientStatus = 'ATIVO' | 'INATIVO'
+
+export type AddressRole = 'Residência' | 'Cobrança' | 'Entrega'
+
+export type ClientPhone = {
+  type: string
+  areaCode: string
+  number: string
+}
+
+export type ClientPersonalInfo = {
   gender: string
   fullName: string
   birthDate: string
   cpf: string
-  phoneType: string
-  phoneAreaCode: string
-  phoneNumber: string
   email: string
-  password: string
+  phone: ClientPhone
+}
+
+export type ClientAddressInput = {
+  label?: string
+  roles: AddressRole[]
   residenceType: string
   streetType: string
   street: string
@@ -116,6 +103,91 @@ export type UserProfile = {
   city: string
   state: string
   country: string
-  addressNotes: string
-  status: 'Ativo' | 'Inativo'
+  notes?: string
+}
+
+export type ClientAddress = ClientAddressInput & {
+  id: string
+}
+
+export type ClientCard = {
+  id: string
+  holder: string
+  brand: string
+  last4: string
+  preferred: boolean
+}
+
+export type CardCreateInput = {
+  holder: string
+  number: string
+  brand: string
+  securityCode: string
+}
+
+export type ClientSummary = {
+  id: string
+  code: string
+  fullName: string
+  cpf: string
+  email: string
+  status: ClientStatus
+  ranking: number
+}
+
+export type ClientDetails = ClientSummary & ClientPersonalInfo & {
+  addresses: ClientAddress[]
+  cards: ClientCard[]
+}
+
+export type ClientRegistrationInput = ClientPersonalInfo & {
+  password: string
+  confirmPassword: string
+  addresses: ClientAddressInput[]
+}
+
+export type ClientUpdateInput = ClientPersonalInfo
+
+export type ClientPasswordUpdateInput = {
+  currentPassword: string
+  password: string
+  confirmPassword: string
+}
+
+export type ClientTransaction = {
+  id: string
+  reference: string
+  occurredAt: string
+  status: string
+  amount: number
+}
+
+export type ClientFilter = {
+  code?: string
+  fullName?: string
+  cpf?: string
+  email?: string
+  gender?: string
+  birthDate?: string
+  phoneType?: string
+  phoneAreaCode?: string
+  phoneNumber?: string
+  status?: ClientStatus
+  city?: string
+  state?: string
+  country?: string
+  zipCode?: string
+  residenceType?: string
+  streetType?: string
+  street?: string
+  number?: string
+  neighborhood?: string
+}
+
+export type PageResult<T> = {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
 }

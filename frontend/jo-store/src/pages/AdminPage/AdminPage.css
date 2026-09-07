@@ -41,7 +41,7 @@
 
 .profile-nav-button {
   width: 100%;
-  min-height: 46px;
+  height: 55px;
   padding: 0 16px;
   border: 1px solid rgba(29, 29, 27, 0.08);
   background: #ffffff;
@@ -131,11 +131,56 @@
   margin-top: 20px;
 }
 
-.admin-client-card, .admin-chart-card, .admin-analytics-card { background: var(--color-surface); border-color: var(--color-border); }
-.admin-analytics-value, .admin-chart-heading h3 { color: var(--color-text); }
-.admin-analytics-label, .admin-analytics-copy, .admin-chart-heading p { color: var(--color-text-muted); }
-.admin-status-actions .order-card-action-primary { background: var(--color-accent); color: #ffffff; border-color: var(--color-accent); }
-.admin-status-actions .order-card-action-primary:hover { background: #303030; border-color: #303030; }
+.admin-client-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.admin-client-filter-actions {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+
+.admin-client-filter-actions .order-card-action {
+  min-width: 0;
+}
+
+.admin-client-error {
+  margin: 16px 0 0;
+  color: #9d3232;
+}
+
+.admin-client-card,
+.admin-chart-card,
+.admin-analytics-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.admin-analytics-value,
+.admin-chart-heading h3 {
+  color: var(--color-text);
+}
+
+.admin-analytics-label,
+.admin-analytics-copy,
+.admin-chart-heading p {
+  color: var(--color-text-muted);
+}
+
+.admin-status-actions .order-card-action-primary {
+  background: var(--color-accent);
+  color: #ffffff;
+  border-color: var(--color-accent);
+}
+
+.admin-status-actions .order-card-action-primary:hover {
+  background: #303030;
+  border-color: #303030;
+}
 
 .admin-client-card {
   border: 1px solid rgba(29, 29, 27, 0.08);
@@ -198,7 +243,7 @@
   gap: 16px;
 }
 
-.order-card-summary-row + .order-card-summary-row {
+.order-card-summary-row+.order-card-summary-row {
   margin-top: 10px;
 }
 
@@ -441,11 +486,25 @@
   background: #d7d7d7;
 }
 
-.admin-analytics-chart span:nth-child(1) { height: 32%; }
-.admin-analytics-chart span:nth-child(2) { height: 54%; }
-.admin-analytics-chart span:nth-child(3) { height: 72%; }
-.admin-analytics-chart span:nth-child(4) { height: 48%; }
-.admin-analytics-chart span:nth-child(5) { height: 84%; }
+.admin-analytics-chart span:nth-child(1) {
+  height: 32%;
+}
+
+.admin-analytics-chart span:nth-child(2) {
+  height: 54%;
+}
+
+.admin-analytics-chart span:nth-child(3) {
+  height: 72%;
+}
+
+.admin-analytics-chart span:nth-child(4) {
+  height: 48%;
+}
+
+.admin-analytics-chart span:nth-child(5) {
+  height: 84%;
+}
 
 @media (max-width: 1100px) {
   .profile-page {
@@ -475,6 +534,10 @@
   }
 
   .admin-revenue-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-client-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -543,6 +606,15 @@
 
   .admin-revenue-filters {
     grid-template-columns: 1fr;
+  }
+
+  .admin-client-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-client-filter-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .admin-filter-field-product {

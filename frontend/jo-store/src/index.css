@@ -48,4 +48,7 @@ a {
   color: inherit;
 }
 
-body { background: var(--color-base); color: var(--color-text); }
+body {
+  background: var(--color-base);
+  color: var(--color-text);
+}

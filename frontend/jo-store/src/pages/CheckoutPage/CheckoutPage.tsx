@@ -1,35 +1,56 @@
-import { useState, type FormEvent } from 'react'
-import type { Address, CartItem, PaymentCard, ToastState } from '../../types/store'
-import { formatCardExpiry } from '../../utils/store'
-import './CheckoutPage.css'
+import { useState, type FormEvent } from "react";
+import { CustomerGatewayError } from "../../services/customerGateway";
+import { useCustomerGateway } from "../../services/useCustomerGateway";
+import type {
+  CardCreateInput,
+  ClientAddress,
+  ClientAddressInput,
+  ClientCard,
+  ClientDetails,
+  ToastState,
+} from "../../types/store";
+import "./CheckoutPage.css";
 
 type CheckoutPageProps = {
-  cartItems: CartItem[]
-  paymentCards: PaymentCard[]
-  addresses: Address[]
-  selectedPaymentCardIds: string[]
-  selectedAddressId: string
-  selectedCouponsCount: number
-  subtotal: number
-  shippingTotal: number
-  couponDiscountTotal: number
-  finalTotal: number
-  onBackToCart: () => void
-  onOpenCoupons: () => void
-  onTogglePaymentCard: (cardId: string) => void
-  onSelectAddress: (addressId: string) => void
-  onAddPaymentCard: (card: Omit<PaymentCard, 'id'>) => void
-  onAddAddress: (address: Omit<Address, 'id'>) => void
-  onShowToast: (toast: Exclude<ToastState, null>) => void
-  onConfirmPurchase: () => void
+  client: ClientDetails;
+  selectedCouponsCount: number;
+  subtotal: number;
+  shippingTotal: number;
+  couponDiscountTotal: number;
+  finalTotal: number;
+  onBackToCart: () => void;
+  onOpenCoupons: () => void;
+  onClientChanged: (client: ClientDetails) => void;
+  onShowToast: (toast: Exclude<ToastState, null>) => void;
+  onConfirmPurchase: (cards: ClientCard[], address: ClientAddress) => void;
+};
+
+const emptyCardForm: CardCreateInput = {
+  number: "",
+  holder: "",
+  brand: "Visa",
+  securityCode: "",
+};
+
+function createEmptyAddress(): ClientAddressInput {
+  return {
+    label: "",
+    roles: ["Entrega"],
+    residenceType: "",
+    streetType: "",
+    street: "",
+    number: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    country: "",
+    zipCode: "",
+    notes: "",
+  };
 }
 
 export function CheckoutPage({
-  cartItems,
-  paymentCards,
-  addresses,
-  selectedPaymentCardIds,
-  selectedAddressId,
+  client,
   selectedCouponsCount,
   subtotal,
   shippingTotal,
@@ -37,154 +58,168 @@ export function CheckoutPage({
   finalTotal,
   onBackToCart,
   onOpenCoupons,
-  onTogglePaymentCard,
-  onSelectAddress,
-  onAddPaymentCard,
-  onAddAddress,
+  onClientChanged,
   onShowToast,
   onConfirmPurchase,
 }: CheckoutPageProps) {
-  const [isAddingCard, setIsAddingCard] = useState(false)
-  const [isAddingAddress, setIsAddingAddress] = useState(false)
-  const [cardForm, setCardForm] = useState({
-    number: '',
-    holder: '',
-    brand: '',
-    cvv: '',
-    expiry: '',
-  })
-  const [addressForm, setAddressForm] = useState({
-    label: '',
-    recipient: '',
-    residenceType: '',
-    streetType: '',
-    street: '',
-    number: '',
-    neighborhood: '',
-    city: '',
-    state: '',
-    country: '',
-    zipCode: '',
-    notes: '',
-  })
+  const customerGateway = useCustomerGateway();
+  const deliveryAddresses = client.addresses.filter((address) =>
+    address.roles.includes("Entrega"),
+  );
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>(() =>
+    client.cards.filter((card) => card.preferred).map((card) => card.id),
+  );
+  const [selectedAddressId, setSelectedAddressId] = useState(
+    () => deliveryAddresses[0]?.id ?? "",
+  );
+  const [isAddingCard, setIsAddingCard] = useState(false);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [cardForm, setCardForm] = useState<CardCreateInput>(emptyCardForm);
+  const [addressForm, setAddressForm] =
+    useState<ClientAddressInput>(createEmptyAddress);
 
-  const selectedCards = paymentCards.filter((card) => selectedPaymentCardIds.includes(card.id))
-  const paymentAllocations = selectedCards.map((card, index) => {
-    const baseShare = selectedCards.length ? finalTotal / selectedCards.length : 0
-    const roundedShare = Number(baseShare.toFixed(2))
-    const isLast = index === selectedCards.length - 1
-    const previousTotal = roundedShare * index
-    const adjustedShare = isLast ? Number((finalTotal - previousTotal).toFixed(2)) : roundedShare
+  const selectedCards = client.cards.filter((card) =>
+    selectedCardIds.includes(card.id),
+  );
+  const selectedAddress = deliveryAddresses.find(
+    (address) => address.id === selectedAddressId,
+  );
 
-    return {
-      ...card,
-      share: adjustedShare < 0 ? 0 : adjustedShare,
-    }
-  })
-
-  function handleSubmitCard(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const form = event.currentTarget
-    const requiredCardFields = [
-      { key: 'number', label: 'Número do cartão' },
-      { key: 'holder', label: 'Nome impresso no cartão' },
-      { key: 'brand', label: 'Bandeira do cartão' },
-      { key: 'cvv', label: 'CVV' },
-      { key: 'expiry', label: 'Data de validade' },
-    ] as const
-
-    const missingCardField = requiredCardFields.find(({ key }) => !cardForm[key].trim())
-
-    if (missingCardField) {
-      form.querySelector<HTMLInputElement>(`[name="${missingCardField.key}"]`)?.focus()
-      onShowToast({
-        variant: 'error',
-        title: 'Cartão não salvo',
-        message: `Preencha o campo "${missingCardField.label}".`,
-      })
-      return
-    }
-
-    const sanitizedNumber = cardForm.number.replace(/\D/g, '')
-
-    if (sanitizedNumber.length < 13) {
-      form.querySelector<HTMLInputElement>('[name="number"]')?.focus()
-      onShowToast({
-        variant: 'error',
-        title: 'Cartão não salvo',
-        message: 'Informe um número de cartão válido.',
-      })
-      return
-    }
-
-    onAddPaymentCard({
-      holder: cardForm.holder,
-      brand: cardForm.brand,
-      last4: sanitizedNumber.slice(-4),
-      expiry: cardForm.expiry,
-    })
-
-    setCardForm({ number: '', holder: '', brand: '', cvv: '', expiry: '' })
-    setIsAddingCard(false)
+  function showError(error: unknown, fallback: string) {
     onShowToast({
-      variant: 'success',
-      title: 'Cartão salvo com sucesso',
-      message: `${cardForm.brand} final ${sanitizedNumber.slice(-4)} foi adicionado aos meios de pagamento.`,
-    })
+      variant: "error",
+      title: "Operação não concluída",
+      message: error instanceof CustomerGatewayError ? error.message : fallback,
+    });
   }
 
-  function handleSubmitAddress(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function toggleCard(cardId: string) {
+    setSelectedCardIds((current) =>
+      current.includes(cardId)
+        ? current.filter((id) => id !== cardId)
+        : [...current, cardId],
+    );
+  }
 
-    const form = event.currentTarget
-    const requiredAddressFields = [
-      { key: 'label', label: 'Apelido do endereço' },
-      { key: 'recipient', label: 'Destinatário' },
-      { key: 'residenceType', label: 'Tipo de residência' },
-      { key: 'streetType', label: 'Tipo de logradouro' },
-      { key: 'street', label: 'Logradouro' },
-      { key: 'number', label: 'Número' },
-      { key: 'neighborhood', label: 'Bairro' },
-      { key: 'city', label: 'Cidade' },
-      { key: 'state', label: 'Estado' },
-      { key: 'country', label: 'País' },
-      { key: 'zipCode', label: 'CEP' },
-    ] as const
+  async function handleSubmitCard(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    const missingAddressField = requiredAddressFields.find(({ key }) => !addressForm[key].trim())
-
-    if (missingAddressField) {
-      form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${missingAddressField.key}"]`)?.focus()
+    try {
+      const updatedClient = await customerGateway.addCard(client.id, cardForm);
+      const newCard = updatedClient.cards.at(-1);
+      onClientChanged(updatedClient);
+      if (newCard) setSelectedCardIds((current) => [...current, newCard.id]);
+      setCardForm(emptyCardForm);
+      setIsAddingCard(false);
       onShowToast({
-        variant: 'error',
-        title: 'Endereço não salvo',
-        message: `Preencha o campo "${missingAddressField.label}".`,
-      })
-      return
+        variant: "success",
+        title: "Cartão salvo",
+        message: "O cartão foi associado ao seu perfil.",
+      });
+    } catch (error) {
+      showError(error, "Não foi possível salvar o cartão.");
+    }
+  }
+
+  async function handleRemoveCard(cardId: string) {
+    try {
+      const updatedClient = await customerGateway.removeCard(client.id, cardId);
+      onClientChanged(updatedClient);
+      setSelectedCardIds((current) => current.filter((id) => id !== cardId));
+      onShowToast({
+        variant: "success",
+        title: "Cartão removido",
+        message: "O cartão foi removido do perfil.",
+      });
+    } catch (error) {
+      showError(error, "Não foi possível remover o cartão.");
+    }
+  }
+
+  async function handleSetPreferredCard(cardId: string) {
+    try {
+      const updatedClient = await customerGateway.setPreferredCard(
+        client.id,
+        cardId,
+      );
+      onClientChanged(updatedClient);
+      onShowToast({
+        variant: "success",
+        title: "Cartão preferencial",
+        message: "A preferência foi atualizada.",
+      });
+    } catch (error) {
+      showError(error, "Não foi possível atualizar a preferência.");
+    }
+  }
+
+  async function handleSubmitAddress(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      const updatedClient = await customerGateway.addAddress(
+        client.id,
+        addressForm,
+      );
+      const newAddress = updatedClient.addresses.at(-1);
+      onClientChanged(updatedClient);
+      if (newAddress) setSelectedAddressId(newAddress.id);
+      setAddressForm(createEmptyAddress());
+      setIsAddingAddress(false);
+      onShowToast({
+        variant: "success",
+        title: "Endereço salvo",
+        message: "O endereço de entrega foi associado ao perfil.",
+      });
+    } catch (error) {
+      showError(error, "Não foi possível salvar o endereço.");
+    }
+  }
+
+  async function handleRemoveAddress(addressId: string) {
+    try {
+      const updatedClient = await customerGateway.removeAddress(
+        client.id,
+        addressId,
+      );
+      onClientChanged(updatedClient);
+      if (selectedAddressId === addressId) {
+        setSelectedAddressId(
+          updatedClient.addresses.find((address) =>
+            address.roles.includes("Entrega"),
+          )?.id ?? "",
+        );
+      }
+      onShowToast({
+        variant: "success",
+        title: "Endereço removido",
+        message: "O endereço foi removido do perfil.",
+      });
+    } catch (error) {
+      showError(error, "Não foi possível remover o endereço.");
+    }
+  }
+
+  function handleConfirm() {
+    if (selectedCards.length === 0) {
+      onShowToast({
+        variant: "error",
+        title: "Pagamento pendente",
+        message: "Selecione ao menos um cartão.",
+      });
+      return;
     }
 
-    onAddAddress(addressForm)
-    setAddressForm({
-      label: '',
-      recipient: '',
-      residenceType: '',
-      streetType: '',
-      street: '',
-      number: '',
-      neighborhood: '',
-      city: '',
-      state: '',
-      country: '',
-      zipCode: '',
-      notes: '',
-    })
-    setIsAddingAddress(false)
-    onShowToast({
-      variant: 'success',
-      title: 'Endereço salvo com sucesso',
-      message: `${addressForm.label} foi adicionado aos endereços de entrega.`,
-    })
+    if (!selectedAddress) {
+      onShowToast({
+        variant: "error",
+        title: "Entrega pendente",
+        message: "Selecione um endereço de entrega.",
+      });
+      return;
+    }
+
+    onConfirmPurchase(selectedCards, selectedAddress);
   }
 
   return (
@@ -198,8 +233,11 @@ export function CheckoutPage({
             Escolha pagamento, endereço e revise o pedido antes de concluir.
           </p>
         </div>
-
-        <button type="button" className="cart-page-back-button" onClick={onBackToCart}>
+        <button
+          type="button"
+          className="cart-page-back-button"
+          onClick={onBackToCart}
+        >
           Voltar ao carrinho
         </button>
       </div>
@@ -208,108 +246,114 @@ export function CheckoutPage({
         <div className="checkout-main">
           <section className="checkout-panel">
             <div className="checkout-panel-header">
-              <h2 className="checkout-panel-title">Resumo do pedido</h2>
-              <span className="checkout-panel-meta">{cartItems.length} produto(s)</span>
-            </div>
-
-            <div className="checkout-order-list">
-              {cartItems.map((item) => (
-                <article key={`${item.id}-${item.size}`} className="checkout-order-item">
-                  <div className={`checkout-order-media ${item.accent}`} aria-hidden="true">
-                    {item.image ? <img src={item.image} alt={item.name} className="checkout-order-image" /> : <div className="product-card-placeholder" />}
-                  </div>
-                  <div className="checkout-order-copy">
-                    <h3 className="checkout-order-name">{item.name}</h3>
-                    <p className="checkout-order-detail">Quantidade: {item.quantity}</p>
-                    <p className="checkout-order-detail">Tamanho: {item.size || 'M'}</p>
-                    <p className="checkout-order-detail">{item.shipping}</p>
-                  </div>
-                  <strong className="checkout-order-price">{item.totalPrice}</strong>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="checkout-panel">
-            <div className="checkout-panel-header">
-              <h2 className="checkout-panel-title">Cartões para pagamento</h2>
-              <button type="button" className="checkout-link-button" onClick={() => setIsAddingCard((value) => !value)}>
-                {isAddingCard ? 'Cancelar' : 'Adicionar novo cartão'}
+              <h2 className="checkout-panel-title">Cartões</h2>
+              <button
+                type="button"
+                className="checkout-link-button"
+                onClick={() => setIsAddingCard((current) => !current)}
+              >
+                {isAddingCard ? "Cancelar" : "Adicionar cartão"}
               </button>
             </div>
 
-            <div className="checkout-card-list">
-              {paymentCards.map((card) => {
-                const isSelected = selectedPaymentCardIds.includes(card.id)
-
-                return (
-                  <label key={card.id} className={`checkout-card-option${isSelected ? ' is-selected' : ''}`}>
-                    <input type="checkbox" checked={isSelected} onChange={() => onTogglePaymentCard(card.id)} />
-                    <div>
-                      <strong>{card.brand} final {card.last4}</strong>
-                      <p>{card.holder}</p>
-                      <span>Validade {card.expiry}</span>
+            {client.cards.length > 0 ? (
+              <div className="checkout-card-list">
+                {client.cards.map((card) => (
+                  <article key={card.id} className="checkout-payment-card">
+                    <label className="checkout-payment-card-main">
+                      <input
+                        type="checkbox"
+                        checked={selectedCardIds.includes(card.id)}
+                        onChange={() => toggleCard(card.id)}
+                      />
+                      <span>
+                        <strong>
+                          {card.brand} final {card.last4}
+                        </strong>
+                        <small>
+                          {card.holder}
+                          {card.preferred ? " - preferencial" : ""}
+                        </small>
+                      </span>
+                    </label>
+                    <div className="checkout-card-actions">
+                      {!card.preferred ? (
+                        <button
+                          type="button"
+                          className="checkout-link-button"
+                          onClick={() => handleSetPreferredCard(card.id)}
+                        >
+                          Preferencial
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="checkout-link-button"
+                        onClick={() => handleRemoveCard(card.id)}
+                      >
+                        Remover
+                      </button>
                     </div>
-                  </label>
-                )
-              })}
-            </div>
-
-            {paymentAllocations.length > 0 ? (
-              <div className="checkout-payment-split">
-                <h3 className="checkout-subtitle">Combinação de pagamento</h3>
-                {paymentAllocations.map((card) => (
-                  <div key={card.id} className="checkout-split-row">
-                    <span>{card.brand} final {card.last4}</span>
-                    <strong>{card.share.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                  </div>
+                  </article>
                 ))}
               </div>
-            ) : null}
+            ) : (
+              <p className="checkout-empty-note">Nenhum cartão cadastrado.</p>
+            )}
 
             {isAddingCard ? (
-              <form className="checkout-inline-form" onSubmit={handleSubmitCard}>
+              <form
+                className="checkout-inline-form"
+                onSubmit={handleSubmitCard}
+              >
                 <input
-                  name="number"
-                  type="text"
+                  required
+                  inputMode="numeric"
                   placeholder="Número do cartão"
                   value={cardForm.number}
-                  onChange={(event) => setCardForm((current) => ({ ...current, number: event.target.value.replace(/[^\d\s]/g, '') }))}
+                  onChange={(event) =>
+                    setCardForm((current) => ({
+                      ...current,
+                      number: event.target.value.replace(/[^\d\s]/g, ""),
+                    }))
+                  }
                 />
                 <input
-                  name="holder"
-                  type="text"
+                  required
                   placeholder="Nome impresso no cartão"
                   value={cardForm.holder}
-                  onChange={(event) => setCardForm((current) => ({ ...current, holder: event.target.value }))}
+                  onChange={(event) =>
+                    setCardForm((current) => ({
+                      ...current,
+                      holder: event.target.value,
+                    }))
+                  }
                 />
                 <div className="checkout-inline-form-row">
-                  <input
-                    name="brand"
-                    type="text"
-                    placeholder="Bandeira do cartão"
+                  <select
                     value={cardForm.brand}
-                    onChange={(event) => setCardForm((current) => ({ ...current, brand: event.target.value }))}
-                  />
-                  <input
-                    name="cvv"
-                    type="text"
-                    placeholder="Código de segurança (CVV)"
-                    maxLength={4}
-                    value={cardForm.cvv}
-                    onChange={(event) => setCardForm((current) => ({ ...current, cvv: event.target.value.replace(/\D/g, '') }))}
-                  />
-                </div>
-                <div className="checkout-inline-form-row">
-                  <input
-                    name="expiry"
-                    type="text"
-                    placeholder="MM/AA"
-                    value={cardForm.expiry}
                     onChange={(event) =>
                       setCardForm((current) => ({
                         ...current,
-                        expiry: formatCardExpiry(event.target.value),
+                        brand: event.target.value,
+                      }))
+                    }
+                  >
+                    <option>Visa</option>
+                    <option>Mastercard</option>
+                    <option>Elo</option>
+                    <option>American Express</option>
+                  </select>
+                  <input
+                    required
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="Código de segurança"
+                    value={cardForm.securityCode}
+                    onChange={(event) =>
+                      setCardForm((current) => ({
+                        ...current,
+                        securityCode: event.target.value.replace(/\D/g, ""),
                       }))
                     }
                   />
@@ -324,139 +368,194 @@ export function CheckoutPage({
           <section className="checkout-panel">
             <div className="checkout-panel-header">
               <h2 className="checkout-panel-title">Endereço de entrega</h2>
-              <button type="button" className="checkout-link-button" onClick={() => setIsAddingAddress((value) => !value)}>
-                {isAddingAddress ? 'Cancelar' : 'Adicionar novo endereço'}
+              <button
+                type="button"
+                className="checkout-link-button"
+                onClick={() => setIsAddingAddress((current) => !current)}
+              >
+                {isAddingAddress ? "Cancelar" : "Adicionar endereço"}
               </button>
             </div>
 
-            <div className="checkout-address-list">
-              {addresses.map((address) => {
-                const isSelected = selectedAddressId === address.id
-
-                return (
-                  <label key={address.id} className={`checkout-address-option${isSelected ? ' is-selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="delivery-address"
-                      checked={isSelected}
-                      onChange={() => onSelectAddress(address.id)}
-                    />
-                    <div>
-                      <strong>{address.label}</strong>
-                      <p>{address.recipient} · {address.residenceType}</p>
-                      <span>{`${address.streetType} ${address.street}, ${address.number} · ${address.neighborhood} · ${address.city} - ${address.state} · ${address.country} · CEP ${address.zipCode}`}</span>
-                      {address.notes ? <span>{address.notes}</span> : null}
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
+            {deliveryAddresses.map((address) => (
+              <label
+                key={address.id}
+                className={`checkout-address-option${selectedAddressId === address.id ? " is-selected" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="delivery-address"
+                  checked={selectedAddressId === address.id}
+                  onChange={() => setSelectedAddressId(address.id)}
+                />
+                <div>
+                  <strong>{address.label}</strong>
+                  <p>{address.residenceType}</p>
+                  <span>{`${address.streetType} ${address.street}, ${address.number} - ${address.neighborhood} - ${address.city}/${address.state} - CEP ${address.zipCode}`}</span>
+                  {address.notes ? <span>{address.notes}</span> : null}
+                </div>
+                <button
+                  type="button"
+                  className="checkout-link-button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleRemoveAddress(address.id);
+                  }}
+                >
+                  Remover
+                </button>
+              </label>
+            ))}
+            {deliveryAddresses.length === 0 ? (
+              <p className="checkout-empty-note">
+                Nenhum endereço de entrega cadastrado.
+              </p>
+            ) : null}
 
             {isAddingAddress ? (
-              <form className="checkout-inline-form" onSubmit={handleSubmitAddress}>
+              <form
+                className="checkout-inline-form"
+                onSubmit={handleSubmitAddress}
+              >
                 <div className="checkout-inline-form-row">
                   <input
-                    name="label"
-                    type="text"
-                    placeholder="Apelido do endereço"
+                    required
+                    placeholder="Nome do endereço"
                     value={addressForm.label}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, label: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        label: event.target.value,
+                      }))
+                    }
                   />
-                  <input
-                    name="recipient"
-                    type="text"
-                    placeholder="Destinatário"
-                    value={addressForm.recipient}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, recipient: event.target.value }))}
-                  />
-                </div>
-                <div className="checkout-inline-form-row">
                   <select
-                    name="residenceType"
+                    required
                     value={addressForm.residenceType}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, residenceType: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        residenceType: event.target.value,
+                      }))
+                    }
                   >
                     <option value="">Tipo de residência</option>
-                    <option value="Casa">Casa</option>
-                    <option value="Apartamento">Apartamento</option>
-                    <option value="Condomínio">Condomínio</option>
-                    <option value="Comercial">Comercial</option>
-                    <option value="Outro">Outro</option>
+                    <option>Casa</option>
+                    <option>Apartamento</option>
+                    <option>Condomínio</option>
+                    <option>Comercial</option>
                   </select>
                 </div>
                 <div className="checkout-inline-form-row">
                   <select
-                    name="streetType"
+                    required
                     value={addressForm.streetType}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, streetType: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        streetType: event.target.value,
+                      }))
+                    }
                   >
                     <option value="">Tipo de logradouro</option>
-                    <option value="Rua">Rua</option>
-                    <option value="Avenida">Avenida</option>
-                    <option value="Praça">Praça</option>
-                    <option value="Alameda">Alameda</option>
+                    <option>Rua</option>
+                    <option>Avenida</option>
+                    <option>Praca</option>
+                    <option>Alameda</option>
                   </select>
                   <input
-                    name="street"
-                    type="text"
+                    required
                     placeholder="Logradouro"
                     value={addressForm.street}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, street: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        street: event.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
-                    name="number"
-                    type="text"
+                    required
                     placeholder="Número"
                     value={addressForm.number}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, number: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        number: event.target.value,
+                      }))
+                    }
                   />
                   <input
-                    name="neighborhood"
-                    type="text"
+                    required
                     placeholder="Bairro"
                     value={addressForm.neighborhood}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, neighborhood: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        neighborhood: event.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
-                    name="city"
-                    type="text"
+                    required
                     placeholder="Cidade"
                     value={addressForm.city}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, city: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        city: event.target.value,
+                      }))
+                    }
                   />
                   <input
-                    name="state"
-                    type="text"
+                    required
                     placeholder="Estado"
                     value={addressForm.state}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, state: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        state: event.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
-                    name="country"
-                    type="text"
+                    required
                     placeholder="País"
                     value={addressForm.country}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, country: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        country: event.target.value,
+                      }))
+                    }
                   />
                   <input
-                    name="zipCode"
-                    type="text"
+                    required
                     placeholder="CEP"
                     value={addressForm.zipCode}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, zipCode: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        zipCode: event.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <textarea
-                  name="notes"
-                  placeholder="Observação (opcional)"
+                  placeholder="Observacao (opcional)"
                   value={addressForm.notes}
-                  onChange={(event) => setAddressForm((current) => ({ ...current, notes: event.target.value }))}
+                  onChange={(event) =>
+                    setAddressForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
                 />
                 <button type="submit" className="checkout-inline-submit">
                   Salvar endereço
@@ -466,40 +565,69 @@ export function CheckoutPage({
           </section>
         </div>
 
-        <aside className="checkout-summary-panel" aria-label="Resumo final da compra">
+        <aside
+          className="checkout-summary-panel"
+          aria-label="Resumo final da compra"
+        >
           <h2 className="checkout-panel-title">Resumo final</h2>
-
           <div className="checkout-summary-rows">
             <div className="checkout-summary-row">
               <span>Subtotal</span>
-              <strong>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              <strong>
+                {subtotal.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </strong>
             </div>
             <div className="checkout-summary-row">
               <span>Frete</span>
-              <strong>{shippingTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              <strong>
+                {shippingTotal.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </strong>
             </div>
-            <button type="button" className="cart-coupon-button" onClick={onOpenCoupons}>
-              Cupons aplicáveis {selectedCouponsCount > 0 ? `(${selectedCouponsCount})` : ''}
+            <button
+              type="button"
+              className="cart-coupon-button"
+              onClick={onOpenCoupons}
+            >
+              Cupons aplicaveis{" "}
+              {selectedCouponsCount > 0 ? `(${selectedCouponsCount})` : ""}
             </button>
           </div>
-
           {couponDiscountTotal > 0 ? (
             <div className="cart-summary-discount">
               <span>Descontos</span>
-              <strong>-{couponDiscountTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              <strong>
+                -
+                {couponDiscountTotal.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </strong>
             </div>
           ) : null}
-
           <div className="cart-summary-total">
             <span>Total da compra</span>
-            <strong>{finalTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+            <strong>
+              {finalTotal.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </strong>
           </div>
-
-          <button type="button" className="cart-checkout-button" onClick={onConfirmPurchase}>
+          <button
+            type="button"
+            className="cart-checkout-button"
+            onClick={handleConfirm}
+          >
             Confirmar pagamento
           </button>
         </aside>
       </div>
     </section>
-  )
+  );
 }

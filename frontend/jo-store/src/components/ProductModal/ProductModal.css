@@ -279,7 +279,8 @@
 
 .product-modal-action-primary {
   background: var(--color-accent);
-  color: #ffffff;;
+  color: #ffffff;
+  ;
 }
 
 .product-modal-action-secondary:hover {

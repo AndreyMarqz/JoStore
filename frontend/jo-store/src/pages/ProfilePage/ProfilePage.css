@@ -6,13 +6,73 @@
   background: #ffffff;
 }
 
-.profile-page { background: var(--color-base); }
-.profile-sidebar, .profile-panel, .order-card { background: var(--color-surface); border-color: var(--color-border); }
-.profile-page-title, .profile-panel-title, .profile-field-value, .order-card-number { color: var(--color-text); }
-.profile-page-subtitle, .profile-field span, .profile-panel-meta, .order-card-date { color: var(--color-text-muted); }
-.profile-nav-button.is-active, .order-card-action-primary { background: var(--color-accent); color: var(--color-text); }
-.profile-nav-button:hover, .order-card-action-secondary:hover { background: var(--color-accent-soft); }
-.profile-field input, .profile-field select { background: var(--color-base); border-color: var(--color-border); color: var(--color-text); }
+.profile-page {
+  background: var(--color-base);
+}
+
+.profile-page-with-navigation {
+  position: relative;
+  padding-left: 324px;
+}
+
+.profile-account-navigation {
+  position: absolute;
+  top: 136px;
+  left: 72px;
+  width: 220px;
+}
+
+.profile-page-with-navigation>.profile-panel {
+  display: none;
+}
+
+.profile-page--info>.profile-panel:nth-of-type(1),
+.profile-page--edit>.profile-panel:nth-of-type(2),
+.profile-page--password>.profile-panel:nth-of-type(3),
+.profile-page--addresses>.profile-panel:nth-of-type(4),
+.profile-page--cards>.profile-panel:nth-of-type(5),
+.profile-page--orders>.profile-panel:nth-of-type(6) {
+  display: block;
+}
+
+.profile-sidebar,
+.profile-panel,
+.order-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.profile-page-title,
+.profile-panel-title,
+.profile-field-value,
+.order-card-number {
+  color: var(--color-text);
+}
+
+.profile-page-subtitle,
+.profile-field span,
+.profile-panel-meta,
+.order-card-date {
+  color: var(--color-text-muted);
+}
+
+.profile-nav-button.is-active,
+.order-card-action-primary {
+  background: var(--color-accent);
+  color: var(--color-text);
+}
+
+.profile-nav-button:hover,
+.order-card-action-secondary:hover {
+  background: var(--color-accent-soft);
+}
+
+.profile-field input,
+.profile-field select {
+  background: var(--color-base);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
 
 .profile-page-header {
   margin-bottom: 36px;
@@ -74,6 +134,88 @@
   max-width: 920px;
 }
 
+.registration-stepper {
+  margin: 4px 0 32px;
+}
+
+.registration-stepper .MuiStepLabel-label {
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.registration-stepper .MuiStepLabel-label.Mui-active,
+.registration-stepper .MuiStepLabel-label.Mui-completed {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.registration-stepper .MuiStepIcon-root {
+  color: #ffffff;
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.registration-stepper .MuiStepIcon-root.Mui-active,
+.registration-stepper .MuiStepIcon-root.Mui-completed {
+  color: var(--color-text);
+  stroke: var(--color-text);
+}
+
+.registration-stepper .MuiStepIcon-text {
+  fill: var(--color-text);
+}
+
+.registration-stepper .MuiStepIcon-root.Mui-active .MuiStepIcon-text,
+.registration-stepper .MuiStepIcon-root.Mui-completed .MuiStepIcon-text {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.registration-step-content {
+  animation: registration-step-enter 280ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.registration-login-copy {
+  margin: 18px 0 0;
+  color: var(--color-text-muted);
+  font-size: .9rem;
+  text-align: center;
+}
+
+.registration-login-copy button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@keyframes registration-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.registration-stepper .MuiStepConnector-line {
+  border-color: var(--color-border);
+}
+
+.registration-stepper .MuiStepConnector-root.Mui-active .MuiStepConnector-line,
+.registration-stepper .MuiStepConnector-root.Mui-completed .MuiStepConnector-line {
+  border-color: var(--color-text);
+}
+
 .profile-panel-header {
   display: flex;
   align-items: flex-start;
@@ -113,8 +255,8 @@
 }
 
 .profile-info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   margin-top: 20px;
 }
@@ -149,6 +291,10 @@
   font: inherit;
 }
 
+.profile-page .password {
+  width: 50%;
+}
+
 .profile-phone-row {
   display: grid;
   grid-template-columns: 1.2fr 0.6fr 1.2fr;
@@ -177,6 +323,54 @@
   gap: 12px;
   margin-top: 20px;
   flex-wrap: wrap;
+  height: 50px;
+}
+
+.profile-management-panel {
+  margin-top: 24px;
+}
+
+.profile-management-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.profile-empty-state {
+  margin: 20px 0 0;
+  color: var(--color-text-muted);
+}
+
+.profile-management-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+}
+
+.profile-management-item p,
+.profile-management-item small {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+}
+
+.profile-management-item .profile-info-actions {
+  margin-top: 0;
+}
+
+.profile-role-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.profile-role-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .orders-list {
@@ -269,7 +463,7 @@
   gap: 16px;
 }
 
-.order-card-summary-row + .order-card-summary-row {
+.order-card-summary-row+.order-card-summary-row {
   margin-top: 10px;
 }
 
@@ -332,6 +526,14 @@
     padding: 40px 32px 72px;
   }
 
+  .profile-page-with-navigation {
+    padding-left: 284px;
+  }
+
+  .profile-account-navigation {
+    left: 32px;
+  }
+
   .profile-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -348,6 +550,16 @@
     padding: 32px 20px 56px;
   }
 
+  .profile-page-with-navigation {
+    padding-left: 20px;
+  }
+
+  .profile-account-navigation {
+    position: static;
+    width: auto;
+    margin-bottom: 24px;
+  }
+
   .profile-info-grid {
     grid-template-columns: 1fr;
   }
@@ -361,6 +573,10 @@
   .order-card-summary-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .profile-management-item {
+    flex-direction: column;
   }
 
   .order-item-row {
@@ -381,8 +597,16 @@
     padding: 24px 16px 44px;
   }
 
+  .profile-page-with-navigation {
+    padding-left: 16px;
+  }
+
   .profile-page-title {
     font-size: 1.65rem;
+  }
+
+  .registration-stepper .MuiStepLabel-label {
+    font-size: 0.7rem;
   }
 
   .profile-sidebar {

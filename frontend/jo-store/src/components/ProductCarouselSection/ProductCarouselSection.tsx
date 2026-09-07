@@ -1,14 +1,14 @@
-import { Navigation, Pagination, A11y } from 'swiper/modules'
-import { Swiper, SwiperSlide } from 'swiper/react'
-import type { ProductCard } from '../../types/store'
-import './ProductCarouselSection.css'
+import { Navigation, Pagination, A11y } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import type { ProductCard } from "../../types/store";
+import "./ProductCarouselSection.css";
 
 type ProductCarouselSectionProps = {
-  title: string
-  sectionId: string
-  products: ProductCard[]
-  onProductSelect: (product: ProductCard) => void
-}
+  title: string;
+  sectionId: string;
+  products: ProductCard[];
+  onProductSelect: (product: ProductCard) => void;
+};
 
 export function ProductCarouselSection({
   title,
@@ -45,7 +45,10 @@ export function ProductCarouselSection({
               onClick={() => onProductSelect(product)}
               aria-label={`Abrir detalhes de ${product.name}`}
             >
-              <div className={`product-card-media ${product.accent}`} aria-hidden="true">
+              <div
+                className={`product-card-media ${product.accent}`}
+                aria-hidden="true"
+              >
                 {product.image ? (
                   <img
                     className="product-card-image"
@@ -68,5 +71,5 @@ export function ProductCarouselSection({
         ))}
       </Swiper>
     </section>
-  )
+  );
 }

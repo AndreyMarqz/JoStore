@@ -39,9 +39,28 @@
   color: #ffffff;
 }
 
-.hero-slide-eyebrow { margin: 0 0 12px; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; }
-.hero-slide-content h1 { margin: 0; font-size: clamp(3rem, 6vw, 5.6rem); font-weight: 600; letter-spacing: -0.06em; line-height: 0.95; }
-.hero-slide-content > p:not(.hero-slide-eyebrow) { max-width: 360px; margin: 20px 0 0; font-size: 1.05rem; line-height: 1.6; }
+.hero-slide-eyebrow {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.hero-slide-content h1 {
+  margin: 0;
+  font-size: clamp(3rem, 6vw, 5.6rem);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+}
+
+.hero-slide-content>p:not(.hero-slide-eyebrow) {
+  max-width: 360px;
+  margin: 20px 0 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
 
 .hero-slide-action {
   min-height: 48px;
@@ -57,7 +76,9 @@
   border-radius: 5px;
 }
 
-.hero-slide-action:hover { background: rgba(255, 255, 255, 0.82); }
+.hero-slide-action:hover {
+  background: rgba(255, 255, 255, 0.82);
+}
 
 .hero-slide-placeholder,
 .hero-slide-image {
@@ -108,8 +129,13 @@
   transition: background-color 180ms ease, transform 180ms ease, color 180ms ease;
 }
 
-.hero-swiper .swiper-button-prev { left: 24px; }
-.hero-swiper .swiper-button-next { right: 24px; }
+.hero-swiper .swiper-button-prev {
+  left: 24px;
+}
+
+.hero-swiper .swiper-button-next {
+  right: 24px;
+}
 
 .hero-swiper .swiper-button-prev:hover,
 .hero-swiper .swiper-button-next:hover {
@@ -124,7 +150,9 @@
   font-weight: 700;
 }
 
-.hero-swiper .swiper-pagination { bottom: 24px !important; }
+.hero-swiper .swiper-pagination {
+  bottom: 24px !important;
+}
 
 .hero-swiper .swiper-pagination-bullet {
   width: 10px;
@@ -157,7 +185,9 @@
   font-size: 0.92rem;
 }
 
-.product-sections { background: var(--color-base); }
+.product-sections {
+  background: var(--color-base);
+}
 
 @media (max-width: 1100px) {
   .hero-carousel-section {
@@ -247,7 +277,7 @@
     line-height: 1;
   }
 
-  .hero-slide-content > p:not(.hero-slide-eyebrow) {
+  .hero-slide-content>p:not(.hero-slide-eyebrow) {
     margin-top: 14px;
     font-size: 0.82rem;
     line-height: 1.45;
