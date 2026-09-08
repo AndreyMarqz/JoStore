@@ -1,8 +1,8 @@
-package com.jostore.dev.model.Customer;
+package com.jostore.dev.model.customer;
 
-import com.jostore.dev.model.Enums.CustomerStatusEnum;
-import com.jostore.dev.model.Enums.GenderEnum;
-import com.jostore.dev.model.Enums.PhoneTypeEnum;
+import com.jostore.dev.model.enums.CustomerStatusEnum;
+import com.jostore.dev.model.enums.GenderEnum;
+import com.jostore.dev.model.enums.PhoneTypeEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,7 +27,7 @@ public class Customer {
     @Column(nullable = false, unique = true, length = 10)
     private String code;
 
-    @Column(name = "full_name", nullable = false, unique = true, length = 150)
+    @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
     @Column(nullable = false, unique = true, length = 11)
@@ -37,7 +37,7 @@ public class Customer {
     @Column(nullable = false, length = 30)
     private GenderEnum gender;
 
-    @Column(name = "birth_date", nullable = false, unique = true, length = 10)
+    @Column(name = "birth_date", nullable = false, length = 10)
     private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
@@ -47,7 +47,7 @@ public class Customer {
     @Column(name = "phone_area_code", nullable = false, length = 2)
     private String phoneAreaCode;
 
-    @Column(name = "phone_number", nullable = false, unique = true, length = 9)
+    @Column(name = "phone_number", nullable = false, length = 9)
     private String phoneNumber;
 
     @Column(nullable = false, unique = true, length = 254)
