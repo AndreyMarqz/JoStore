@@ -160,7 +160,6 @@ function toSummary(client: ClientDetails): ClientSummary {
     cpf: client.cpf,
     email: client.email,
     status: client.status,
-    ranking: client.ranking,
   }
 }
 
@@ -228,7 +227,6 @@ export const mockCustomerGateway: CustomerGateway = {
       birthDate: input.birthDate,
       phone: { ...input.phone },
       status: 'ATIVO',
-      ranking: 0,
       addresses,
       cards: [],
     }

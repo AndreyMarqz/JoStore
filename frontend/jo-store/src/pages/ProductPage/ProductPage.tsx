@@ -102,7 +102,7 @@ export function ProductPage({
             <span>Guia de tamanhos disponível</span>
           </fieldset>
           <div className="product-page-quantity">
-            <label htmlFor="product-page-quantity">Quantidade</label>
+            <label>Quantidade</label>
             <div className="product-page-stepper">
               <button
                 type="button"

@@ -317,10 +317,6 @@ export function ClientProfilePage({
             <span>Telefone</span>
             <strong className="profile-field-value">{`${client.phone.type}: (${client.phone.areaCode}) ${client.phone.number}`}</strong>
           </div>
-          <div className="profile-field">
-            <span>Ranking</span>
-            <strong className="profile-field-value">{client.ranking}</strong>
-          </div>
           {address ? (
             <>
               <div className="profile-field">

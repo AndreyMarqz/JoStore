@@ -48,7 +48,8 @@ paths:
       summary: Cadastra um cliente
       description: |
         Cria o cliente e gera seu código único. A senha não é retornada.
-        O cadastro deve conter ao menos um endereço residencial, de cobrança e de entrega.
+        O cadastro deve conter endereços que cubram as finalidades residencial,
+        de cobrança e de entrega, conforme RN0021, RN0022 e RN0026.
       security: []
       requestBody:
         required: true
@@ -485,7 +486,7 @@ components:
             duplicatedEmail:
               value: { status: 409, code: CUSTOMER_EMAIL_ALREADY_EXISTS, message: Já existe um cliente cadastrado com este e-mail., fieldErrors: [{ field: email, message: E-mail já cadastrado. }] }
     CustomerRegistrationInvalid:
-      description: O cadastro não cumpre campos obrigatórios, senha ou endereços exigidos.
+      description: O cadastro não cumpre campos obrigatórios ou regras de senha.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -496,8 +497,6 @@ components:
               value: { status: 422, code: PASSWORD_WEAK, message: 'A senha deve ter ao menos 8 caracteres, letra maiúscula, minúscula e caractere especial.', fieldErrors: [{ field: password, message: Senha fora da política de segurança. }] }
             passwordMismatch:
               value: { status: 422, code: PASSWORD_CONFIRMATION_MISMATCH, message: Os campos de senha e confirmação devem ser iguais., fieldErrors: [{ field: confirmPassword, message: Confirmação diferente da senha. }] }
-            missingRequiredAddressRole:
-              value: { status: 422, code: ADDRESS_REQUIRED_ROLE_MISSING, message: O cliente deve possuir endereço residencial, de cobrança e de entrega., fieldErrors: [{ field: addresses, message: Inclua as três finalidades obrigatórias. }] }
     CustomerUpdateConflict:
       description: CPF ou e-mail já pertencem a outro cliente.
       content:
@@ -614,6 +613,12 @@ components:
     CustomerStatus:
       type: string
       enum: [ATIVO, INATIVO]
+    Gender:
+      type: string
+      enum: [FEMININO, MASCULINO, NAO_BINARIO, PREFIRO_NAO_INFORMAR]
+    PhoneType:
+      type: string
+      enum: [CELULAR, RESIDENCIAL, COMERCIAL]
     CustomerStatusUpdateRequest:
       type: object
       required: [status]
@@ -622,15 +627,15 @@ components:
           $ref: '#/components/schemas/CustomerStatus'
     AddressRole:
       type: string
-      enum: [Residência, Cobrança, Entrega]
+      enum: [RESIDENCIA, COBRANCA, ENTREGA]
     CardBrand:
       type: string
-      enum: [Visa, Mastercard, Elo, American Express]
+      enum: [VISA, MASTERCARD, ELO, AMERICAN_EXPRESS]
     Phone:
       type: object
       required: [type, areaCode, number]
       properties:
-        type: { type: string, example: Celular }
+        type: { $ref: '#/components/schemas/PhoneType' }
         areaCode: { type: string, pattern: '^\\d{2}$', example: '11' }
         number: { type: string, pattern: '^\\d{8,9}$', example: '999999999' }
     AddressRequest:
@@ -682,7 +687,7 @@ components:
       properties:
         fullName: { type: string, minLength: 1, example: Ana Cliente da Silva }
         cpf: { type: string, pattern: '^\\d{11}$', example: '12345678901' }
-        gender: { type: string, example: Feminino }
+        gender: { $ref: '#/components/schemas/Gender' }
         birthDate: { type: string, format: date, example: '1999-03-15' }
         phone: { $ref: '#/components/schemas/Phone' }
         email: { type: string, format: email, example: ana@example.com }
@@ -702,7 +707,7 @@ components:
       properties:
         fullName: { type: string, minLength: 1 }
         cpf: { type: string, pattern: '^\\d{11}$' }
-        gender: { type: string }
+        gender: { $ref: '#/components/schemas/Gender' }
         birthDate: { type: string, format: date }
         phone: { $ref: '#/components/schemas/Phone' }
         email: { type: string, format: email }
@@ -719,18 +724,17 @@ components:
         confirmPassword: { type: string, format: password }
     CustomerResponse:
       type: object
-      required: [id, code, fullName, cpf, gender, birthDate, phone, email, status, ranking, addresses, cards]
+      required: [id, code, fullName, cpf, gender, birthDate, phone, email, status, addresses, cards]
       properties:
         id: { type: string, format: uuid }
         code: { type: string, example: CLI-000001 }
         fullName: { type: string }
         cpf: { type: string }
-        gender: { type: string }
+        gender: { $ref: '#/components/schemas/Gender' }
         birthDate: { type: string, format: date }
         phone: { $ref: '#/components/schemas/Phone' }
         email: { type: string, format: email }
         status: { $ref: '#/components/schemas/CustomerStatus' }
-        ranking: { type: integer, minimum: 0 }
         addresses:
           type: array
           items: { $ref: '#/components/schemas/AddressResponse' }
@@ -739,7 +743,7 @@ components:
           items: { $ref: '#/components/schemas/CardResponse' }
     CustomerSummary:
       type: object
-      required: [id, code, fullName, cpf, email, status, ranking]
+      required: [id, code, fullName, cpf, email, status]
       properties:
         id: { type: string, format: uuid }
         code: { type: string }
@@ -747,7 +751,6 @@ components:
         cpf: { type: string }
         email: { type: string, format: email }
         status: { $ref: '#/components/schemas/CustomerStatus' }
-        ranking: { type: integer }
     CustomerPage:
       type: object
       required: [content, page, size, totalElements, totalPages]

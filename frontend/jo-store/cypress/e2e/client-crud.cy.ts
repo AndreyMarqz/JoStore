@@ -1,6 +1,6 @@
 describe('CRUD de clientes', () => {
   beforeEach(() => {
-    cy.visit('/')
+    cy.visit('/?gateway=mock')
     cy.clearLocalStorage()
     cy.reload()
   })

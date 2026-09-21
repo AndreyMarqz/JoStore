@@ -132,7 +132,6 @@ export type ClientSummary = {
   cpf: string
   email: string
   status: ClientStatus
-  ranking: number
 }
 
 export type ClientDetails = ClientSummary & ClientPersonalInfo & {

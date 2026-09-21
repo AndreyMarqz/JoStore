@@ -254,12 +254,6 @@ export function AdminPage({
                             {client.email}
                           </strong>
                         </div>
-                        <div className="profile-field">
-                          <span>Ranking</span>
-                          <strong className="profile-field-value">
-                            {client.ranking}
-                          </strong>
-                        </div>
                       </div>
                       <div className="admin-status-actions">
                         {client.status === "ATIVO" ? (
@@ -379,7 +373,7 @@ export function AdminPage({
               ) : (
                 <div className="profile-empty-state">
                   <h3>Nenhum pedido registrado</h3>
-                  <p>Os pedidos realizados pelos clientes aparecerao aqui.</p>
+                  <p>Os pedidos realizados pelos clientes aparecerão aqui.</p>
                 </div>
               )}
             </section>
