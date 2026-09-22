@@ -22,7 +22,8 @@ function createInitialAddress(): ClientAddressInput {
     zipCode: '',
     city: '',
     state: '',
-    country: '',
+    country: 'Brasil',
+    complement: '',
     notes: '',
   }
 }

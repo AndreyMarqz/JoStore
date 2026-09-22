@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
 import Stepper from "@mui/material/Stepper";
@@ -6,6 +6,7 @@ import { PasswordField } from "../../components/PasswordField/PasswordField";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
 import type { AddressRole, ClientDetails, ToastState } from "../../types/store";
+import { brazilianStates, countries, residenceTypes, streetTypes } from "../../utils/addressOptions";
 import {
   createEmptyClientRegistration,
   validateClientRegistration,
@@ -29,8 +30,6 @@ const genders = [
   "Prefiro não informar",
 ];
 const phoneTypes = ["Celular", "Residencial", "Comercial"];
-const residences = ["Casa", "Apartamento", "Condomínio", "Comercial", "Outro"];
-const streets = ["Rua", "Avenida", "Praça", "Alameda"];
 const addressRoles: AddressRole[] = ["Residência", "Cobrança", "Entrega"];
 
 export function ClientRegistrationPage({
@@ -42,6 +41,8 @@ export function ClientRegistrationPage({
   const [form, setForm] = useState(createEmptyClientRegistration);
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLookingUpZipCode, setIsLookingUpZipCode] = useState(false);
+  const zipCodeLookupRequest = useRef(0);
   const address = form.addresses[0];
 
   function report(message: string) {
@@ -52,6 +53,48 @@ export function ClientRegistrationPage({
       ...current,
       addresses: [{ ...current.addresses[0], [field]: value }],
     }));
+  }
+  async function updateZipCode(value: string) {
+    const requestId = ++zipCodeLookupRequest.current;
+    const zipCode = value.replace(/\D/g, "");
+    updateAddress("zipCode", value);
+
+    if (zipCode.length !== 8) {
+      setIsLookingUpZipCode(false);
+      return;
+    }
+
+    try {
+      setIsLookingUpZipCode(true);
+      const lookup = await gateway.lookupAddress(zipCode);
+
+      if (requestId !== zipCodeLookupRequest.current) return;
+
+      setForm((current) => ({
+        ...current,
+        addresses: [{
+          ...current.addresses[0],
+          zipCode: lookup.zipCode,
+          street: lookup.street,
+          neighborhood: lookup.neighborhood,
+          city: lookup.city,
+          state: lookup.state,
+          country: lookup.country,
+        }],
+      }));
+    } catch (error) {
+      if (requestId !== zipCodeLookupRequest.current) return;
+
+      report(
+        error instanceof CustomerGatewayError
+          ? error.message
+          : "Não foi possível consultar o CEP. Tente novamente.",
+      );
+    } finally {
+      if (requestId === zipCodeLookupRequest.current) {
+        setIsLookingUpZipCode(false);
+      }
+    }
   }
   function toggleAddressRole(role: AddressRole, checked: boolean) {
     setForm((current) => {
@@ -336,7 +379,7 @@ export function ClientRegistrationPage({
                       }
                     >
                       <option value="">Selecione</option>
-                      {residences.map((item) => (
+                      {residenceTypes.map((item) => (
                         <option key={item}>{item}</option>
                       ))}
                     </select>
@@ -351,7 +394,7 @@ export function ClientRegistrationPage({
                       }
                     >
                       <option value="">Selecione</option>
-                      {streets.map((item) => (
+                      {streetTypes.map((item) => (
                         <option key={item}>{item}</option>
                       ))}
                     </select>
@@ -391,9 +434,8 @@ export function ClientRegistrationPage({
                     <input
                       data-cy="client-address-zip-code"
                       value={address.zipCode}
-                      onChange={(event) =>
-                        updateAddress("zipCode", event.target.value)
-                      }
+                      onChange={(event) => void updateZipCode(event.target.value)}
+                      aria-busy={isLookingUpZipCode}
                     />
                   </label>
                   <label className="profile-field">
@@ -408,23 +450,33 @@ export function ClientRegistrationPage({
                   </label>
                   <label className="profile-field">
                     <span>Estado</span>
-                    <input
+                    <select
                       data-cy="client-address-state"
                       value={address.state}
                       onChange={(event) =>
                         updateAddress("state", event.target.value)
                       }
-                    />
+                    >
+                      <option value="">Selecione</option>
+                      {brazilianStates.map((state) => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="profile-field">
                     <span>País</span>
-                    <input
+                    <select
                       data-cy="client-address-country"
                       value={address.country}
                       onChange={(event) =>
                         updateAddress("country", event.target.value)
                       }
-                    />
+                    >
+                      <option value="">Selecione</option>
+                      {countries.map((country) => (
+                        <option key={country.code} value={country.name}>{country.name}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="profile-field profile-field-full">
                     <span>Observações</span>

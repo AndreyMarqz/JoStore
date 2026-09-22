@@ -103,11 +103,21 @@ export type ClientAddressInput = {
   city: string
   state: string
   country: string
+  complement?: string
   notes?: string
 }
 
 export type ClientAddress = ClientAddressInput & {
   id: string
+}
+
+export type AddressLookupResult = {
+  zipCode: string
+  street: string
+  neighborhood: string
+  city: string
+  state: string
+  country: string
 }
 
 export type ClientCard = {

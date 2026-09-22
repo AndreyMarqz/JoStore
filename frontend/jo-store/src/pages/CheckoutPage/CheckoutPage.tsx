@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { brazilianStates, countries } from "../../utils/addressOptions";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
 import type {
@@ -28,7 +29,7 @@ type CheckoutPageProps = {
 const emptyCardForm: CardCreateInput = {
   number: "",
   holder: "",
-  brand: "Visa",
+  brand: "",
   securityCode: "",
 };
 
@@ -44,6 +45,7 @@ function createEmptyAddress(): ClientAddressInput {
     city: "",
     state: "",
     country: "",
+    complement: "",
     zipCode: "",
     notes: "",
   };
@@ -74,6 +76,10 @@ export function CheckoutPage({
   );
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [isEditingCardPreferred, setIsEditingCardPreferred] = useState(false);
+  const [isAddressComplementNotApplicable, setIsAddressComplementNotApplicable] = useState(false);
   const [cardForm, setCardForm] = useState<CardCreateInput>(emptyCardForm);
   const [addressForm, setAddressForm] =
     useState<ClientAddressInput>(createEmptyAddress);
@@ -81,9 +87,24 @@ export function CheckoutPage({
   const selectedCards = client.cards.filter((card) =>
     selectedCardIds.includes(card.id),
   );
+  const cardSplitAmounts = (() => {
+    if (selectedCards.length < 2) return [];
+
+    const totalInCents = Math.round(finalTotal * 100);
+    const baseAmount = Math.floor(totalInCents / selectedCards.length);
+    const remainder = totalInCents % selectedCards.length;
+
+    return selectedCards.map((card, index) => ({
+      card,
+      amount: (baseAmount + (index < remainder ? 1 : 0)) / 100,
+    }));
+  })();
   const selectedAddress = deliveryAddresses.find(
     (address) => address.id === selectedAddressId,
   );
+  const editingCard = editingCardId
+    ? client.cards.find((card) => card.id === editingCardId)
+    : undefined;
 
   function showError(error: unknown, fallback: string) {
     onShowToast({
@@ -101,24 +122,74 @@ export function CheckoutPage({
     );
   }
 
+  async function fillAddressFromZipCode() {
+    const zipCode = addressForm.zipCode.replace(/\D/g, "");
+    if (zipCode.length !== 8) return;
+
+    try {
+      const result = await customerGateway.lookupAddress(zipCode);
+      const streetTypes = ["Rua", "Avenida", "Alameda", "Praça"];
+      const streetType = streetTypes.find((type) => result.street.startsWith(`${type} `));
+      const street = streetType ? result.street.slice(streetType.length).trim() : result.street;
+      setAddressForm((current) => ({
+        ...current,
+        zipCode: result.zipCode,
+        street: street || current.street,
+        streetType: streetType || current.streetType,
+        neighborhood: result.neighborhood || current.neighborhood,
+        city: result.city || current.city,
+        state: result.state || current.state,
+        country: result.country || current.country,
+      }));
+    } catch (error) {
+      showError(error, "Não foi possível consultar o CEP.");
+    }
+  }
+
+  function keepCardOrder(updatedClient: ClientDetails): ClientDetails {
+    const cardsById = new Map(updatedClient.cards.map((card) => [card.id, card]));
+    const currentCardIds = new Set(client.cards.map((card) => card.id));
+    const cardsInCurrentOrder = client.cards.flatMap((card) => {
+      const updatedCard = cardsById.get(card.id);
+      return updatedCard ? [updatedCard] : [];
+    });
+    const newCards = updatedClient.cards.filter((card) => !currentCardIds.has(card.id));
+
+    return { ...updatedClient, cards: [...cardsInCurrentOrder, ...newCards] };
+  }
+
   async function handleSubmitCard(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     try {
-      const updatedClient = await customerGateway.addCard(client.id, cardForm);
+      let updatedClient = editingCardId
+        ? await customerGateway.updateCard(client.id, editingCardId, cardForm)
+        : await customerGateway.addCard(client.id, cardForm);
+      if (editingCardId && isEditingCardPreferred && !editingCard?.preferred) {
+        updatedClient = await customerGateway.setPreferredCard(client.id, editingCardId);
+      }
       const newCard = updatedClient.cards.at(-1);
-      onClientChanged(updatedClient);
-      if (newCard) setSelectedCardIds((current) => [...current, newCard.id]);
+      onClientChanged(keepCardOrder(updatedClient));
+      if (!editingCardId && newCard) setSelectedCardIds((current) => [...current, newCard.id]);
       setCardForm(emptyCardForm);
+      setEditingCardId(null);
+      setIsEditingCardPreferred(false);
       setIsAddingCard(false);
       onShowToast({
         variant: "success",
-        title: "Cartão salvo",
-        message: "O cartão foi associado ao seu perfil.",
+        title: editingCardId ? "Cartão atualizado" : "Cartão salvo",
+        message: editingCardId ? "Os dados do cartão foram atualizados." : "O cartão foi associado ao seu perfil.",
       });
     } catch (error) {
       showError(error, "Não foi possível salvar o cartão.");
     }
+  }
+
+  function handleEditCard(card: ClientCard) {
+    setEditingCardId(card.id);
+    setIsEditingCardPreferred(card.preferred);
+    setCardForm({ number: "", holder: card.holder, brand: card.brand, securityCode: "" });
+    setIsAddingCard(true);
   }
 
   async function handleRemoveCard(cardId: string) {
@@ -136,44 +207,53 @@ export function CheckoutPage({
     }
   }
 
-  async function handleSetPreferredCard(cardId: string) {
-    try {
-      const updatedClient = await customerGateway.setPreferredCard(
-        client.id,
-        cardId,
-      );
-      onClientChanged(updatedClient);
-      onShowToast({
-        variant: "success",
-        title: "Cartão preferencial",
-        message: "A preferência foi atualizada.",
-      });
-    } catch (error) {
-      showError(error, "Não foi possível atualizar a preferência.");
-    }
-  }
-
   async function handleSubmitAddress(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     try {
-      const updatedClient = await customerGateway.addAddress(
-        client.id,
-        addressForm,
-      );
+      const addressPayload = {
+        ...addressForm,
+        complement: isAddressComplementNotApplicable ? undefined : addressForm.complement,
+      };
+      const updatedClient = editingAddressId
+        ? await customerGateway.updateAddress(client.id, editingAddressId, addressPayload)
+        : await customerGateway.addAddress(client.id, addressPayload);
       const newAddress = updatedClient.addresses.at(-1);
       onClientChanged(updatedClient);
-      if (newAddress) setSelectedAddressId(newAddress.id);
+      if (!editingAddressId && newAddress) setSelectedAddressId(newAddress.id);
       setAddressForm(createEmptyAddress());
+      setEditingAddressId(null);
+      setIsAddressComplementNotApplicable(false);
       setIsAddingAddress(false);
       onShowToast({
         variant: "success",
-        title: "Endereço salvo",
-        message: "O endereço de entrega foi associado ao perfil.",
+        title: editingAddressId ? "Endereço atualizado" : "Endereço salvo",
+        message: editingAddressId ? "Os dados do endereço foram atualizados." : "O endereço de entrega foi associado ao perfil.",
       });
     } catch (error) {
       showError(error, "Não foi possível salvar o endereço.");
     }
+  }
+
+  function handleEditAddress(address: ClientAddress) {
+    setEditingAddressId(address.id);
+    setAddressForm({
+      label: address.label,
+      roles: address.roles,
+      residenceType: address.residenceType,
+      streetType: address.streetType,
+      street: address.street,
+      number: address.number,
+      neighborhood: address.neighborhood,
+      city: address.city,
+      state: address.state,
+      country: address.country,
+      complement: address.complement ?? "",
+      zipCode: address.zipCode,
+      notes: address.notes ?? "",
+    });
+    setIsAddressComplementNotApplicable(!address.complement);
+    setIsAddingAddress(true);
   }
 
   async function handleRemoveAddress(addressId: string) {
@@ -250,9 +330,14 @@ export function CheckoutPage({
               <button
                 type="button"
                 className="checkout-link-button"
-                onClick={() => setIsAddingCard((current) => !current)}
+                onClick={() => {
+                  setEditingCardId(null);
+                  setIsEditingCardPreferred(false);
+                  setCardForm(emptyCardForm);
+                  setIsAddingCard((current) => !current);
+                }}
               >
-                {isAddingCard ? "Cancelar" : "Adicionar cartão"}
+                {isAddingCard ? "Cancelar" : "Adicionar cartão +"}
               </button>
             </div>
 
@@ -270,28 +355,31 @@ export function CheckoutPage({
                         <strong>
                           {card.brand} final {card.last4}
                         </strong>
-                        <small>
-                          {card.holder}
-                          {card.preferred ? " - preferencial" : ""}
-                        </small>
+                        <small>{card.holder}</small>
                       </span>
                     </label>
                     <div className="checkout-card-actions">
-                      {!card.preferred ? (
-                        <button
-                          type="button"
-                          className="checkout-link-button"
-                          onClick={() => handleSetPreferredCard(card.id)}
-                        >
-                          Preferencial
-                        </button>
-                      ) : null}
                       <button
                         type="button"
-                        className="checkout-link-button"
-                        onClick={() => handleRemoveCard(card.id)}
+                        className="checkout-icon-button"
+                        onClick={() => handleEditCard(card)}
+                        aria-label="Editar cartão"
+                        title="Editar cartão"
                       >
-                        Remover
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 16.5V20h3.5L18.3 9.2l-3.5-3.5L4 16.5Zm16.7-9.7a1 1 0 0 0 0-1.4l-2.1-2.1a1 1 0 0 0-1.4 0l-1.6 1.6 3.5 3.5 1.6-1.6Z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="checkout-icon-button checkout-icon-button--danger"
+                        onClick={() => handleRemoveCard(card.id)}
+                        aria-label="Remover cartão"
+                        title="Remover cartão"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 3v6h2v-6h-2Zm4 0v6h2v-6h-2Z" />
+                        </svg>
                       </button>
                     </div>
                   </article>
@@ -301,15 +389,42 @@ export function CheckoutPage({
               <p className="checkout-empty-note">Nenhum cartão cadastrado.</p>
             )}
 
+            {cardSplitAmounts.length > 0 ? (
+              <div className="checkout-payment-split">
+                <p>
+                  Valor dividido entre {cardSplitAmounts.length} cartões
+                </p>
+                <div className="checkout-payment-split-list">
+                  {cardSplitAmounts.map(({ card, amount }) => (
+                    <div key={card.id}>
+                      <span>{card.brand} final {card.last4}</span>
+                      <strong>
+                        {amount.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             {isAddingCard ? (
               <form
                 className="checkout-inline-form"
                 onSubmit={handleSubmitCard}
               >
+                <p className="checkout-inline-form-label">{editingCardId ? "Editar cartão" : "Novo cartão"}</p>
+                {editingCard ? (
+                  <p className="checkout-card-edit-note">
+                    Cartão atual: final {editingCard.last4}. Informe o número completo somente se desejar alterá-lo.
+                  </p>
+                ) : null}
                 <input
                   required
                   inputMode="numeric"
-                  placeholder="Número do cartão"
+                  placeholder={editingCard ? "Novo número do cartão" : "Número do cartão"}
                   value={cardForm.number}
                   onChange={(event) =>
                     setCardForm((current) => ({
@@ -331,6 +446,7 @@ export function CheckoutPage({
                 />
                 <div className="checkout-inline-form-row">
                   <select
+                    required
                     value={cardForm.brand}
                     onChange={(event) =>
                       setCardForm((current) => ({
@@ -339,6 +455,7 @@ export function CheckoutPage({
                       }))
                     }
                   >
+                    <option value="">Selecione</option>
                     <option>Visa</option>
                     <option>Mastercard</option>
                     <option>Elo</option>
@@ -358,6 +475,16 @@ export function CheckoutPage({
                     }
                   />
                 </div>
+                {editingCardId ? (
+                  <label className="checkout-card-preference">
+                    <input
+                      type="checkbox"
+                      checked={isEditingCardPreferred}
+                      onChange={(event) => setIsEditingCardPreferred(event.target.checked)}
+                    />
+                    Tornar este cartão preferencial
+                  </label>
+                ) : null}
                 <button type="submit" className="checkout-inline-submit">
                   Salvar cartão
                 </button>
@@ -371,41 +498,66 @@ export function CheckoutPage({
               <button
                 type="button"
                 className="checkout-link-button"
-                onClick={() => setIsAddingAddress((current) => !current)}
+                onClick={() => {
+                  setEditingAddressId(null);
+                  setIsAddressComplementNotApplicable(false);
+                  setAddressForm(createEmptyAddress());
+                  setIsAddingAddress((current) => !current);
+                }}
               >
-                {isAddingAddress ? "Cancelar" : "Adicionar endereço"}
+                {isAddingAddress ? "Cancelar" : "Adicionar endereço +"}
               </button>
             </div>
 
-            {deliveryAddresses.map((address) => (
-              <label
-                key={address.id}
-                className={`checkout-address-option${selectedAddressId === address.id ? " is-selected" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="delivery-address"
-                  checked={selectedAddressId === address.id}
-                  onChange={() => setSelectedAddressId(address.id)}
-                />
-                <div>
-                  <strong>{address.label}</strong>
-                  <p>{address.residenceType}</p>
-                  <span>{`${address.streetType} ${address.street}, ${address.number} - ${address.neighborhood} - ${address.city}/${address.state} - CEP ${address.zipCode}`}</span>
-                  {address.notes ? <span>{address.notes}</span> : null}
-                </div>
-                <button
-                  type="button"
-                  className="checkout-link-button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    handleRemoveAddress(address.id);
-                  }}
-                >
-                  Remover
-                </button>
-              </label>
-            ))}
+            {deliveryAddresses.length > 0 ? (
+              <div className="checkout-address-list">
+                {deliveryAddresses.map((address) => (
+                  <article
+                    key={address.id}
+                    className={`checkout-address-option${selectedAddressId === address.id ? " is-selected" : ""}`}
+                  >
+                    <label className="checkout-address-main">
+                      <input
+                        type="radio"
+                        name="delivery-address"
+                        checked={selectedAddressId === address.id}
+                        onChange={() => setSelectedAddressId(address.id)}
+                      />
+                      <div>
+                        <strong>{address.label}</strong>
+                        <p>{address.residenceType}</p>
+                        <span>{`${address.streetType} ${address.street}, ${address.number}${address.complement ? `, ${address.complement}` : ""} - ${address.neighborhood} - ${address.city}/${address.state} - CEP ${address.zipCode}`}</span>
+                        {address.notes ? <span>{address.notes}</span> : null}
+                      </div>
+                    </label>
+                    <div className="checkout-address-actions">
+                      <button
+                        type="button"
+                        className="checkout-icon-button"
+                        onClick={() => handleEditAddress(address)}
+                        aria-label="Editar endereço"
+                        title="Editar endereço"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 16.5V20h3.5L18.3 9.2l-3.5-3.5L4 16.5Zm16.7-9.7a1 1 0 0 0 0-1.4l-2.1-2.1a1 1 0 0 0-1.4 0l-1.6 1.6 3.5 3.5 1.6-1.6Z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="checkout-icon-button checkout-icon-button--danger"
+                        onClick={() => handleRemoveAddress(address.id)}
+                        aria-label="Remover endereço"
+                        title="Remover endereço"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 3v6h2v-6h-2Zm4 0v6h2v-6h-2Z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
             {deliveryAddresses.length === 0 ? (
               <p className="checkout-empty-note">
                 Nenhum endereço de entrega cadastrado.
@@ -417,6 +569,7 @@ export function CheckoutPage({
                 className="checkout-inline-form"
                 onSubmit={handleSubmitAddress}
               >
+                <p className="checkout-inline-form-label">{editingAddressId ? "Editar endereço de entrega" : "Novo endereço de entrega"}</p>
                 <div className="checkout-inline-form-row">
                   <input
                     required
@@ -477,6 +630,32 @@ export function CheckoutPage({
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
+                    disabled={isAddressComplementNotApplicable}
+                    placeholder="Complemento"
+                    value={addressForm.complement ?? ""}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        complement: event.target.value,
+                      }))
+                    }
+                  />
+                  <label className="checkout-complement-not-applicable">
+                    <input
+                      type="checkbox"
+                      checked={isAddressComplementNotApplicable}
+                      onChange={(event) => {
+                        setIsAddressComplementNotApplicable(event.target.checked);
+                        if (event.target.checked) {
+                          setAddressForm((current) => ({ ...current, complement: "" }));
+                        }
+                      }}
+                    />
+                    N/A
+                  </label>
+                </div>
+                <div className="checkout-inline-form-row">
+                  <input
                     required
                     placeholder="Número"
                     value={addressForm.number}
@@ -511,34 +690,29 @@ export function CheckoutPage({
                       }))
                     }
                   />
-                  <input
+                  <select
                     required
-                    placeholder="Estado"
                     value={addressForm.state}
-                    onChange={(event) =>
-                      setAddressForm((current) => ({
-                        ...current,
-                        state: event.target.value,
-                      }))
-                    }
-                  />
+                    onChange={(event) => setAddressForm((current) => ({ ...current, state: event.target.value }))}
+                  >
+                    <option value="">Estado</option>
+                    {brazilianStates.map((state) => <option key={state} value={state}>{state}</option>)}
+                  </select>
                 </div>
                 <div className="checkout-inline-form-row">
-                  <input
+                  <select
                     required
-                    placeholder="País"
                     value={addressForm.country}
-                    onChange={(event) =>
-                      setAddressForm((current) => ({
-                        ...current,
-                        country: event.target.value,
-                      }))
-                    }
-                  />
+                    onChange={(event) => setAddressForm((current) => ({ ...current, country: event.target.value }))}
+                  >
+                    <option value="">País</option>
+                    {countries.map((country) => <option key={country.code} value={country.name}>{country.name}</option>)}
+                  </select>
                   <input
                     required
                     placeholder="CEP"
                     value={addressForm.zipCode}
+                    onBlur={fillAddressFromZipCode}
                     onChange={(event) =>
                       setAddressForm((current) => ({
                         ...current,
@@ -594,7 +768,7 @@ export function CheckoutPage({
               className="cart-coupon-button"
               onClick={onOpenCoupons}
             >
-              Cupons aplicaveis{" "}
+              Cupons aplicáveis{" "}
               {selectedCouponsCount > 0 ? `(${selectedCouponsCount})` : ""}
             </button>
           </div>

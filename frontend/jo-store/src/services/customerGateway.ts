@@ -1,5 +1,6 @@
 import type {
   AddressRole,
+  AddressLookupResult,
   CardCreateInput,
   ClientAddressInput,
   ClientCard,
@@ -42,8 +43,10 @@ export interface CustomerGateway {
   reactivateClient(id: string): Promise<ClientDetails>
   addAddress(clientId: string, input: ClientAddressInput): Promise<ClientDetails>
   updateAddress(clientId: string, addressId: string, input: ClientAddressInput): Promise<ClientDetails>
+  lookupAddress(zipCode: string): Promise<AddressLookupResult>
   removeAddress(clientId: string, addressId: string): Promise<ClientDetails>
   addCard(clientId: string, input: CardCreateInput): Promise<ClientDetails>
+  updateCard(clientId: string, cardId: string, input: CardCreateInput): Promise<ClientDetails>
   removeCard(clientId: string, cardId: string): Promise<ClientDetails>
   setPreferredCard(clientId: string, cardId: string): Promise<ClientDetails>
 }
@@ -352,6 +355,23 @@ export const mockCustomerGateway: CustomerGateway = {
     return cloneClient(client)
   },
 
+  async lookupAddress(zipCode) {
+    const normalizedZipCode = zipCode.replace(/\D/g, '')
+
+    if (normalizedZipCode === '01001000') {
+      return {
+        zipCode: normalizedZipCode,
+        street: 'das Flores',
+        neighborhood: 'Centro',
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'Brasil',
+      }
+    }
+
+    throw new CustomerGatewayError(`CEP não encontrado (${normalizedZipCode}).`, 404)
+  },
+
   async removeAddress(clientId, addressId) {
     const client = getClientOrFail(clientId)
     const updatedAddresses = client.addresses.filter((address) => address.id !== addressId)
@@ -397,6 +417,37 @@ export const mockCustomerGateway: CustomerGateway = {
     }
 
     client.cards.push(card)
+    persistCustomers()
+    return cloneClient(client)
+  },
+
+  async updateCard(clientId, cardId, input) {
+    const number = input.number.replace(/\D/g, '')
+
+    if (!input.holder.trim()) {
+      throw new CustomerGatewayError('Informe o nome do titular do cartão.', 422)
+    }
+
+    if (number.length < 13 || number.length > 19) {
+      throw new CustomerGatewayError('Informe um número de cartão válido, com 13 a 19 dígitos.', 422)
+    }
+
+    if (!input.securityCode.trim()) {
+      throw new CustomerGatewayError('Informe o CVV do cartão.', 422)
+    }
+
+    const brand = allowedCardBrands.find((item) => normalize(item) === normalize(input.brand))
+    if (!brand) {
+      throw new CustomerGatewayError('A bandeira informada não está cadastrada no sistema.', 422)
+    }
+
+    const client = getClientOrFail(clientId)
+    const exists = client.cards.some((card) => card.id === cardId)
+    if (!exists) throw new CustomerGatewayError('Cartão não encontrado.', 404)
+
+    client.cards = client.cards.map((card) => card.id === cardId
+      ? { ...card, holder: input.holder.trim(), brand, last4: number.slice(-4) }
+      : card)
     persistCustomers()
     return cloneClient(client)
   },

@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
 import { PasswordField } from "../../components/PasswordField/PasswordField";
@@ -12,6 +12,7 @@ import type {
   Order,
   ToastState,
 } from "../../types/store";
+import { brazilianStates, countries, residenceTypes, streetTypes } from "../../utils/addressOptions";
 import "./ProfilePage.css";
 
 type Props = {
@@ -37,6 +38,7 @@ const blankAddress: ClientAddressInput = {
   city: "",
   state: "",
   country: "Brasil",
+  complement: "",
   notes: "",
 };
 const blankCard: CardCreateInput = {
@@ -46,6 +48,8 @@ const blankCard: CardCreateInput = {
   securityCode: "",
 };
 const roles: AddressRole[] = ["Residência", "Cobrança", "Entrega"];
+const genders = ["Feminino", "Masculino", "Não binário", "Prefiro não informar"];
+const phoneTypes = ["Celular", "Residencial", "Comercial"];
 type ProfileSection =
   | "info"
   | "edit"
@@ -85,6 +89,8 @@ export function ClientProfilePage({
   const [cardForm, setCardForm] = useState<CardCreateInput>(blankCard);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
+  const [isLookingUpZipCode, setIsLookingUpZipCode] = useState(false);
+  const zipCodeLookupRequest = useRef(0);
   const [isCardFormOpen, setIsCardFormOpen] = useState(false);
   const [personalForm, setPersonalForm] = useState<ClientUpdateInput>(() => ({
     gender: client.gender,
@@ -109,6 +115,44 @@ export function ClientProfilePage({
 
   function setFeedback(toast: Exclude<ToastState, null>) {
     onShowToast(toast);
+  }
+
+  async function updateAddressZipCode(value: string) {
+    const requestId = ++zipCodeLookupRequest.current;
+    const zipCode = value.replace(/\D/g, "");
+    setAddressForm((current) => ({ ...current, zipCode: value }));
+
+    if (zipCode.length !== 8) {
+      setIsLookingUpZipCode(false);
+      return;
+    }
+
+    try {
+      setIsLookingUpZipCode(true);
+      const lookup = await gateway.lookupAddress(zipCode);
+      if (requestId !== zipCodeLookupRequest.current) return;
+
+      setAddressForm((current) => ({
+        ...current,
+        zipCode: lookup.zipCode,
+        street: lookup.street,
+        neighborhood: lookup.neighborhood,
+        city: lookup.city,
+        state: lookup.state,
+        country: lookup.country,
+      }));
+    } catch (error) {
+      if (requestId !== zipCodeLookupRequest.current) return;
+      setFeedback({
+        variant: "error",
+        title: "Não foi possível consultar o CEP",
+        message: errorMessage(error),
+      });
+    } finally {
+      if (requestId === zipCodeLookupRequest.current) {
+        setIsLookingUpZipCode(false);
+      }
+    }
   }
 
   async function saveAddress(event: FormEvent<HTMLFormElement>) {
@@ -199,8 +243,32 @@ export function ClientProfilePage({
 
   async function savePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const submittedPassword = {
+      currentPassword: String(formData.get("currentPassword") ?? ""),
+      password: String(formData.get("password") ?? ""),
+      confirmPassword: String(formData.get("confirmPassword") ?? ""),
+    };
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/.test(submittedPassword.password)) {
+      setFeedback({
+        variant: "error",
+        title: "Não foi possível alterar a senha",
+        message:
+          "A senha deve ter ao menos 8 caracteres, letra maiúscula, minúscula e caractere especial.",
+      });
+      return;
+    }
+    if (submittedPassword.password !== submittedPassword.confirmPassword) {
+      setFeedback({
+        variant: "error",
+        title: "Não foi possível alterar a senha",
+        message: "Os campos de nova senha e confirmação devem ser iguais.",
+      });
+      return;
+    }
     try {
-      await gateway.updatePassword(client.id, passwordForm);
+      await gateway.updatePassword(client.id, submittedPassword);
       setPasswordForm({
         currentPassword: "",
         password: "",
@@ -383,7 +451,7 @@ export function ClientProfilePage({
             </label>
             <label className="profile-field">
               <span>Gênero</span>
-              <input
+              <select
                 required
                 value={personalForm.gender}
                 onChange={(event) =>
@@ -392,7 +460,13 @@ export function ClientProfilePage({
                     gender: event.target.value,
                   })
                 }
-              />
+              >
+                {genders.map((gender) => (
+                  <option key={gender} value={gender}>
+                    {gender}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="profile-field">
               <span>E-mail</span>
@@ -410,7 +484,7 @@ export function ClientProfilePage({
             </label>
             <label className="profile-field">
               <span>Tipo de telefone</span>
-              <input
+              <select
                 required
                 value={personalForm.phone.type}
                 onChange={(event) =>
@@ -419,7 +493,13 @@ export function ClientProfilePage({
                     phone: { ...personalForm.phone, type: event.target.value },
                   })
                 }
-              />
+              >
+                {phoneTypes.map((phoneType) => (
+                  <option key={phoneType} value={phoneType}>
+                    {phoneType}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="profile-field">
               <span>DDD</span>
@@ -483,12 +563,13 @@ export function ClientProfilePage({
               <span>Senha atual</span>
               <PasswordField
                 required
+                name="currentPassword"
                 value={passwordForm.currentPassword}
                 onChange={(event) =>
-                  setPasswordForm({
-                    ...passwordForm,
+                  setPasswordForm((current) => ({
+                    ...current,
                     currentPassword: event.target.value,
-                  })
+                  }))
                 }
               />
             </label>
@@ -496,12 +577,13 @@ export function ClientProfilePage({
               <span>Nova senha</span>
               <PasswordField
                 required
+                name="password"
                 value={passwordForm.password}
                 onChange={(event) =>
-                  setPasswordForm({
-                    ...passwordForm,
+                  setPasswordForm((current) => ({
+                    ...current,
                     password: event.target.value,
-                  })
+                  }))
                 }
               />
             </label>
@@ -509,12 +591,13 @@ export function ClientProfilePage({
               <span>Confirmar nova senha</span>
               <PasswordField
                 required
+                name="confirmPassword"
                 value={passwordForm.confirmPassword}
                 onChange={(event) =>
-                  setPasswordForm({
-                    ...passwordForm,
+                  setPasswordForm((current) => ({
+                    ...current,
                     confirmPassword: event.target.value,
-                  })
+                  }))
                 }
               />
             </label>
@@ -550,21 +633,29 @@ export function ClientProfilePage({
               <div className="profile-info-actions">
                 <button
                   type="button"
-                  className="order-card-action order-card-action-secondary"
+                  className="profile-icon-button"
                   onClick={() => {
                     setEditingId(item.id);
                     setAddressForm({ ...item });
                     setIsAddressFormOpen(true);
                   }}
+                  aria-label="Editar endereço"
+                  title="Editar endereço"
                 >
-                  Editar
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 16.5V20h3.5L18.3 9.2l-3.5-3.5L4 16.5Zm16.7-9.7a1 1 0 0 0 0-1.4l-2.1-2.1a1 1 0 0 0-1.4 0l-1.6 1.6 3.5 3.5 1.6-1.6Z" />
+                  </svg>
                 </button>
                 <button
                   type="button"
-                  className="order-card-action order-card-action-secondary"
+                  className="profile-icon-button profile-icon-button--danger"
                   onClick={() => removeAddress(item.id)}
+                  aria-label="Remover endereço"
+                  title="Remover endereço"
                 >
-                  Remover
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 3v6h2v-6h-2Zm4 0v6h2v-6h-2Z" />
+                  </svg>
                 </button>
               </div>
             </article>
@@ -619,12 +710,9 @@ export function ClientProfilePage({
                   <option value="" disabled>
                     Selecione
                   </option>
-                  <option value="Casa">Casa</option>
-                  <option value="Apartamento">Apartamento</option>
-                  <option value="Condomínio">Condomínio</option>
-                  <option value="Kitnet">Kitnet</option>
-                  <option value="Sobrado">Sobrado</option>
-                  <option value="Outro">Outro</option>
+                  {residenceTypes.map((residenceType) => (
+                    <option key={residenceType} value={residenceType}>{residenceType}</option>
+                  ))}
                 </select>
               </label>
               <label className="profile-field">
@@ -642,14 +730,9 @@ export function ClientProfilePage({
                   <option value="" disabled>
                     Selecione
                   </option>
-                  <option value="Rua">Rua</option>
-                  <option value="Avenida">Avenida</option>
-                  <option value="Alameda">Alameda</option>
-                  <option value="Travessa">Travessa</option>
-                  <option value="Estrada">Estrada</option>
-                  <option value="Rodovia">Rodovia</option>
-                  <option value="Praça">Praça</option>
-                  <option value="Outro">Outro</option>
+                  {streetTypes.map((streetType) => (
+                    <option key={streetType} value={streetType}>{streetType}</option>
+                  ))}
                 </select>
               </label>
               <label className="profile-field">
@@ -696,12 +779,8 @@ export function ClientProfilePage({
                 <input
                   required
                   value={addressForm.zipCode}
-                  onChange={(event) =>
-                    setAddressForm({
-                      ...addressForm,
-                      zipCode: event.target.value,
-                    })
-                  }
+                  onChange={(event) => void updateAddressZipCode(event.target.value)}
+                  aria-busy={isLookingUpZipCode}
                 />
               </label>
               <label className="profile-field">
@@ -716,7 +795,7 @@ export function ClientProfilePage({
               </label>
               <label className="profile-field">
                 <span>Estado</span>
-                <input
+                <select
                   required
                   value={addressForm.state}
                   onChange={(event) =>
@@ -725,11 +804,16 @@ export function ClientProfilePage({
                       state: event.target.value,
                     })
                   }
-                />
+                >
+                  <option value="" disabled>Selecione</option>
+                  {brazilianStates.map((state) => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
               </label>
               <label className="profile-field">
                 <span>País</span>
-                <input
+                <select
                   required
                   value={addressForm.country}
                   onChange={(event) =>
@@ -738,7 +822,12 @@ export function ClientProfilePage({
                       country: event.target.value,
                     })
                   }
-                />
+                >
+                  <option value="" disabled>Selecione</option>
+                  {countries.map((country) => (
+                    <option key={country.code} value={country.name}>{country.name}</option>
+                  ))}
+                </select>
               </label>
             </div>
             <div className="profile-role-options">
@@ -820,12 +909,16 @@ export function ClientProfilePage({
                 ) : null}
                 <button
                   type="button"
-                  className="order-card-action order-card-action-secondary"
+                  className="profile-icon-button profile-icon-button--danger"
                   onClick={() =>
                     updateCard(() => gateway.removeCard(client.id, card.id))
                   }
+                  aria-label="Remover cartão"
+                  title="Remover cartão"
                 >
-                  Remover
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 3v6h2v-6h-2Zm4 0v6h2v-6h-2Z" />
+                  </svg>
                 </button>
               </div>
             </article>

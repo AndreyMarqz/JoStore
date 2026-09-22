@@ -96,6 +96,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: 10px;
 }
 
 .checkout-panel-title {
@@ -119,6 +120,33 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+.checkout-icon-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.checkout-icon-button:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.checkout-icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.checkout-icon-button--danger {
+  color: #9e3434;
 }
 
 .checkout-inline-submit:hover {
@@ -189,12 +217,12 @@
   gap: 12px;
   padding: 16px;
   border: 1px solid rgba(29, 29, 27, 0.08);
-  cursor: pointer;
 }
 
 .checkout-card-option input,
 .checkout-address-option input {
   accent-color: #1d1d1b;
+  cursor: pointer;
 }
 
 .checkout-card-option strong,
@@ -220,6 +248,123 @@
 .checkout-address-option.is-selected {
   border-color: rgba(29, 29, 27, 0.24);
   background: #fafafa;
+}
+
+.checkout-address-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.checkout-address-main {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.checkout-address-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.checkout-payment-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.checkout-payment-card-main {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.checkout-payment-card-main input {
+  align-self: center;
+  margin: 0;
+  accent-color: #1d1d1b;
+}
+
+.checkout-payment-card-main strong,
+.checkout-payment-card-main small {
+  display: block;
+}
+
+.checkout-payment-card-main small {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+}
+
+.checkout-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+
+.checkout-card-preference {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkout-card-preference input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #1d1d1b;
+  cursor: pointer;
+}
+
+.checkout-payment-split {
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-base);
+}
+
+.checkout-payment-split p {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.checkout-payment-split-list {
+  display: grid;
+  gap: 8px;
+}
+
+.checkout-payment-split-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.checkout-payment-split-list strong {
+  color: var(--color-text);
 }
 
 .checkout-subtitle {
@@ -257,6 +402,19 @@
   margin-top: 18px;
 }
 
+.checkout-inline-form-label {
+  margin: 0 0 2px;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.checkout-card-edit-note {
+  margin: -4px 0 2px;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .checkout-inline-form input,
 .checkout-inline-form select,
 .checkout-inline-form textarea {
@@ -277,6 +435,21 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.checkout-complement-not-applicable {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.checkout-complement-not-applicable input {
+  min-height: auto;
+  padding: 0;
 }
 
 .checkout-inline-submit {
@@ -363,6 +536,15 @@
     padding: 14px;
   }
 
+  .checkout-address-option {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .checkout-address-actions {
+    justify-content: flex-end;
+  }
+
   .checkout-card-option div,
   .checkout-address-option div,
   .checkout-order-copy {
@@ -373,4 +555,5 @@
   .checkout-link-button {
     align-self: flex-start;
   }
+
 }

@@ -212,7 +212,8 @@ public class CustomerService {
                 request.city().trim(),
                 request.state(),
                 request.country().trim(),
-                normalizeOptional(request.notes()));
+                normalizeOptional(request.notes()),
+                normalizeOptional(request.complement()));
 
         return toResponse(customer);
     }
@@ -237,6 +238,14 @@ public class CustomerService {
 
         customer.addCreditCard(creditCard);
         creditCardRepository.save(creditCard);
+        return toResponse(customer);
+    }
+
+    @Transactional
+    public CustomerResponseDto updateCreditCard(UUID customerId, UUID cardId, CreditCardRequestDto request) {
+        Customer customer = findCustomer(customerId);
+        validateCardNumber(request.number());
+        findCreditCard(cardId, customerId).updateData(request.number(), request.holder().trim(), request.brand());
         return toResponse(customer);
     }
 
@@ -282,7 +291,8 @@ public class CustomerService {
                 request.city().trim(),
                 request.state(),
                 request.country().trim(),
-                normalizeOptional(request.notes()));
+                normalizeOptional(request.notes()),
+                normalizeOptional(request.complement()));
     }
 
     private ResidenceType findResidenceType(String description) {
@@ -453,6 +463,7 @@ public class CustomerService {
                 address.getCity(),
                 address.getState(),
                 address.getCountry(),
+                address.getComplement(),
                 address.getObservation());
     }
 
