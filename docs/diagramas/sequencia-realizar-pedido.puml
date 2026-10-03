@@ -1,0 +1,130 @@
+@startuml
+title JoStore - Diagrama de Sequência - Realizar Pedido
+autonumber
+hide footbox
+
+actor Cliente
+boundary "Tela de Checkout" as CheckoutView
+control CheckoutController
+control CheckoutService
+control CartService
+control InventoryService
+control FreightService
+control PaymentService
+entity "Operadora de Pagamento" as PaymentGateway
+control OrderService
+database CartRepository
+database OrderRepository
+database InventoryMovementRepository
+
+Cliente -> CheckoutView : Seleciona endereço, cartões e cupons
+CheckoutView -> CheckoutController : finalizarPedido(customerId, CheckoutRequestDto)
+activate CheckoutController
+
+CheckoutController -> CheckoutService : finish(customerId, request)
+activate CheckoutService
+
+CheckoutService -> CartService : getCurrentCart(customerId)
+activate CartService
+CartService -> CartRepository : findByCustomerIdAndStatus(customerId, ATIVO)
+activate CartRepository
+CartRepository --> CartService : Cart
+deactivate CartRepository
+CartService --> CheckoutService : Cart com itens
+deactivate CartService
+
+CheckoutService -> InventoryService : validateAvailability(cartItems)
+activate InventoryService
+
+alt Estoque indisponível ou quantidade alterada
+  InventoryService --> CheckoutService : Item indisponível / quantidade atualizada
+  deactivate InventoryService
+  CheckoutService --> CheckoutController : Erro de disponibilidade
+  CheckoutController --> CheckoutView : Exibe alerta e atualiza carrinho
+  CheckoutView --> Cliente : Informa alteração de estoque
+else Estoque disponível
+  InventoryService --> CheckoutService : Estoque validado
+  deactivate InventoryService
+
+  CheckoutService -> FreightService : calculate(address, cartItems)
+  activate FreightService
+  FreightService --> CheckoutService : Valor do frete
+  deactivate FreightService
+
+  CheckoutService -> OrderService : createPendingOrder(customer, cart, address, payments, coupons, freight)
+  activate OrderService
+  OrderService -> OrderRepository : save(order : EM_PROCESSAMENTO)
+  activate OrderRepository
+  OrderRepository --> OrderService : Order
+  deactivate OrderRepository
+  OrderService --> CheckoutService : Order
+  deactivate OrderService
+
+  CheckoutService -> PaymentService : process(order, payments, coupons)
+  activate PaymentService
+  PaymentService -> PaymentGateway : Autorizar pagamento por cartão
+  activate PaymentGateway
+  PaymentGateway --> PaymentService : Resultado da autorização
+  deactivate PaymentGateway
+
+  alt Pagamento aprovado
+    PaymentService --> CheckoutService : Pagamento aprovado
+    deactivate PaymentService
+    CheckoutService -> InventoryService : confirmSaleAndDecreaseStock(orderItems)
+    activate InventoryService
+    InventoryService -> InventoryMovementRepository : save(baixa de estoque)
+    activate InventoryMovementRepository
+    InventoryMovementRepository --> InventoryService : Movimentações registradas
+    deactivate InventoryMovementRepository
+    InventoryService --> CheckoutService : Estoque baixado
+    deactivate InventoryService
+
+    CheckoutService -> OrderService : approve(orderId)
+    activate OrderService
+    OrderService -> OrderRepository : save(order : APROVADA)
+    activate OrderRepository
+    OrderRepository --> OrderService : Pedido aprovado
+    deactivate OrderRepository
+    OrderService --> CheckoutService : OrderResponseDto
+    deactivate OrderService
+    CheckoutService --> CheckoutController : Pedido aprovado
+    CheckoutController --> CheckoutView : Confirma pedido e exibe número
+    CheckoutView --> Cliente : Pedido realizado com sucesso
+
+  else Pagamento recusado
+    PaymentService --> CheckoutService : Pagamento recusado
+    deactivate PaymentService
+    CheckoutService -> InventoryService : releaseReservation(cartItems)
+    activate InventoryService
+    InventoryService --> CheckoutService : Reserva liberada
+    deactivate InventoryService
+
+    CheckoutService -> OrderService : reject(orderId)
+    activate OrderService
+    OrderService -> OrderRepository : save(order : REPROVADA)
+    activate OrderRepository
+    OrderRepository --> OrderService : Pedido reprovado
+    deactivate OrderRepository
+    OrderService --> CheckoutService : OrderResponseDto
+    deactivate OrderService
+    CheckoutService --> CheckoutController : Pagamento recusado
+    CheckoutController --> CheckoutView : Exibe motivo da recusa
+    CheckoutView --> Cliente : Solicita nova forma de pagamento
+  end
+end
+
+deactivate CheckoutService
+deactivate CheckoutController
+
+note right of CheckoutService
+  O pedido é criado como EM_PROCESSAMENTO.
+  Após a validação do pagamento, torna-se
+  APROVADA ou REPROVADA, conforme RN0037 e RN0038.
+end note
+
+note right of InventoryService
+  A baixa definitiva ocorre somente
+  quando o pagamento for aprovado,
+  conforme RN0028 e RF0053.
+end note
+@enduml

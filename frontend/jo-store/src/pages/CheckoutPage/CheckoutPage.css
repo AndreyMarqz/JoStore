@@ -381,8 +381,8 @@
   gap: 16px;
 }
 
-.checkout-split-row+.checkout-split-row,
-.checkout-summary-row+.checkout-summary-row {
+.checkout-split-row + .checkout-split-row,
+.checkout-summary-row + .checkout-summary-row {
   margin-top: 10px;
 }
 
@@ -555,5 +555,4 @@
   .checkout-link-button {
     align-self: flex-start;
   }
-
 }

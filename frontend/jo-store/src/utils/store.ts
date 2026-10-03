@@ -1,57 +1,77 @@
-import type { DummyProduct, ProductCard, ProductSection } from '../types/store'
+import type { DummyProduct, ProductCard, ProductSection } from "../types/store";
 
 export function formatPrice(value: number) {
-  return (value * 5.2).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
+  return (value * 5.2).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 export function parseFormattedPrice(price: string) {
-  return Number(price.replace(/[^\d,]/g, '').replace(',', '.'))
+  return Number(price.replace(/[^\d,]/g, "").replace(",", "."));
 }
 
 export function formatCardExpiry(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 4)
-  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  return digits.length <= 2
+    ? digits
+    : `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
 export function normalizeOrderStatus(status: string) {
-  return status.trim().toUpperCase()
+  return status.trim().toUpperCase();
 }
 
-export function mapProduct(product: DummyProduct, index: number, accentClasses: readonly string[]): ProductCard {
-  const shipping = product.price >= 50 || product.rating >= 4.5
-    ? 'Frete gratis'
-    : 'Frete a combinar'
+export function mapProduct(
+  product: DummyProduct,
+  index: number,
+  accentClasses: readonly string[],
+): ProductCard {
+  const shipping =
+    product.price >= 50 || product.rating >= 4.5
+      ? "Frete gratis"
+      : "Frete a combinar";
 
   return {
-    id: product.id,
+    id: String(product.id),
     name: product.title,
     category: product.category,
-    description: product.description ?? 'Peca selecionada para compor a vitrine principal da JoStore.',
+    description:
+      product.description ??
+      "Peca selecionada para compor a vitrine principal da JoStore.",
     price: formatPrice(product.price),
     shipping,
     accent: accentClasses[index % accentClasses.length],
-    image: product.thumbnail ?? product.images?.[0] ?? '',
-    images: product.images?.length ? product.images : product.thumbnail ? [product.thumbnail] : [],
-  }
+    image: product.thumbnail ?? product.images?.[0] ?? "",
+    images: product.images?.length
+      ? product.images
+      : product.thumbnail
+        ? [product.thumbnail]
+        : [],
+  };
 }
 
 export function isFootwearProduct(product: ProductCard) {
-  if (product.category === 'mens-shoes' || product.category === 'womens-shoes') {
-    return true
+  if (
+    product.category === "mens-shoes" ||
+    product.category === "womens-shoes"
+  ) {
+    return true;
   }
 
   const footwearNames = [
-    'calvin klein heel shoes',
-    'puma future rider trainers',
-    'nike air jordan 1 red and black',
-    'sports sneakers off white & red',
-  ]
+    "calvin klein heel shoes",
+    "puma future rider trainers",
+    "nike air jordan 1 red and black",
+    "sports sneakers off white & red",
+  ];
 
-  return footwearNames.includes(product.name.toLocaleLowerCase('en-US'))
-    || /shoe|sneaker|boot|sandal|slipper|loafer|heel|trainer|air jordan/i.test(product.name)
+  return (
+    footwearNames.includes(product.name.toLocaleLowerCase("en-US")) ||
+    /shoe|sneaker|boot|sandal|slipper|loafer|heel|trainer|air jordan/i.test(
+      product.name,
+    )
+  );
 }
 
 export function buildProductSections(
@@ -61,16 +81,39 @@ export function buildProductSections(
 ): ProductSection[] {
   const uniqueProducts = Array.from(
     new Map(products.map((product) => [product.id, product])).values(),
-  )
+  );
 
   const fromCategories = (categories: readonly string[]) =>
-    uniqueProducts.filter((product) => product.category && categories.includes(product.category))
+    uniqueProducts.filter(
+      (product) => product.category && categories.includes(product.category),
+    );
 
-  const toCard = (product: DummyProduct, index: number) => mapProduct(product, index, accentClasses)
+  const toCard = (product: DummyProduct, index: number) =>
+    mapProduct(product, index, accentClasses);
 
   return [
-    { id: 'offers', title: 'Ofertas do dia', products: [...fromCategories(fashionCategoryGroups.offers)].sort((a, b) => b.discountPercentage - a.discountPercentage).slice(0, 8).map(toCard) },
-    { id: 'best-sellers', title: 'Mais vendidos', products: [...fromCategories(fashionCategoryGroups.bestSellers)].sort((a, b) => b.rating - a.rating).slice(0, 8).map(toCard) },
-    { id: 'featured', title: 'Destaque', products: fromCategories(fashionCategoryGroups.featured).slice(0, 8).map(toCard) },
-  ]
+    {
+      id: "offers",
+      title: "Ofertas do dia",
+      products: [...fromCategories(fashionCategoryGroups.offers)]
+        .sort((a, b) => b.discountPercentage - a.discountPercentage)
+        .slice(0, 8)
+        .map(toCard),
+    },
+    {
+      id: "best-sellers",
+      title: "Mais vendidos",
+      products: [...fromCategories(fashionCategoryGroups.bestSellers)]
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 8)
+        .map(toCard),
+    },
+    {
+      id: "featured",
+      title: "Destaque",
+      products: fromCategories(fashionCategoryGroups.featured)
+        .slice(0, 8)
+        .map(toCard),
+    },
+  ];
 }

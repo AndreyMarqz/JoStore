@@ -1,8 +1,9 @@
-import { availableCoupons } from "../../data/storeData";
+import type { Coupon } from "../../types/store";
 import "./CouponModal.css";
 
 type CouponModalProps = {
   isOpen: boolean;
+  coupons: Coupon[];
   subtotal: number;
   selectedCouponIds: string[];
   onClose: () => void;
@@ -11,6 +12,7 @@ type CouponModalProps = {
 
 export function CouponModal({
   isOpen,
+  coupons,
   subtotal,
   selectedCouponIds,
   onClose,
@@ -50,7 +52,7 @@ export function CouponModal({
         </p>
 
         <div className="coupon-list">
-          {availableCoupons.map((coupon) => {
+          {coupons.map((coupon) => {
             const canUse = subtotal >= coupon.minimumSubtotal;
             const isSelected = selectedCouponIds.includes(coupon.id);
 

@@ -1,0 +1,554 @@
+@startuml
+title JoStore - Diagrama de Classes de Modelo de Domínio
+hide empty members
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #303030
+  FontName Arial
+  FontSize 11
+}
+skinparam note {
+  BackgroundColor #FFFDF1
+  BorderColor #B99D47
+}
+
+legend right
+|= Cor |= Situação |
+|<#DCEBFF> Azul | Classe já implementada |
+|<#F2F2F2> Cinza | Classe planejada |
+|<#FFF7D6> Amarelo | Enumeração |
+endlegend
+
+package "Clientes e acesso" {
+  class Customer <<implementada>> #DCEBFF {
+    - id : UUID
+    - code : String
+    - fullName : String
+    - cpf : String
+    - gender : GenderEnum
+    - birthDate : LocalDate
+    - status : CustomerStatusEnum
+    - createdAt : Instant
+    - updatedAt : Instant
+    --
+    + addAddress(address : Address) : void
+    + removeAddress(address : Address) : void
+    + addPhone(phone : Phone) : void
+    + addCreditCard(card : CreditCard) : void
+    + updatePersonalData(...) : void
+    + inactivate() : void
+    + reactivate() : void
+  }
+
+  class User <<implementada>> #DCEBFF {
+    - id : UUID
+    - email : String
+    - passwordHash : String
+    --
+    + changeEmail(email : String) : void
+    + changePasswordHash(passwordHash : String) : void
+  }
+
+  class Phone <<implementada>> #DCEBFF {
+    - id : UUID
+    - type : PhoneTypeEnum
+    - ddd : String
+    - number : String
+    --
+    + updateData(type : PhoneTypeEnum, ddd : String, number : String) : void
+  }
+
+  class Address <<implementada>> #DCEBFF {
+    - id : UUID
+    - purposes : Set<PurposeEnum>
+    - identification : String
+    - publicPlace : String
+    - addressNumber : String
+    - neighborhood : String
+    - cep : String
+    - city : String
+    - state : StateEnum
+    - country : String
+    - observation : String
+    --
+    + replacePurposes(purposes : Set<PurposeEnum>) : void
+    + updateData(...) : void
+  }
+
+  class ResidenceType <<implementada>> #DCEBFF {
+    - id : UUID
+    - description : String
+    --
+    + changeDescription(description : String) : void
+  }
+
+  class PublicPlaceType <<implementada>> #DCEBFF {
+    - id : UUID
+    - description : String
+    --
+    + changeDescription(description : String) : void
+  }
+
+  class CreditCard <<implementada>> #DCEBFF {
+    - id : UUID
+    - last4 : String
+    - cardName : String
+    - cardFlag : CardFlagEnum
+    - preferredCard : boolean
+    --
+    + makePreferred() : void
+    + removePreference() : void
+  }
+
+  class Role <<planejada>> #F2F2F2 {
+    - id : UUID
+    - name : UserRoleEnum
+  }
+
+  class RefreshToken <<planejada>> #F2F2F2 {
+    - id : UUID
+    - tokenHash : String
+    - expiresAt : Instant
+    - revokedAt : Instant
+  }
+
+  class Notification <<planejada>> #F2F2F2 {
+    - id : UUID
+    - title : String
+    - message : String
+    - type : NotificationTypeEnum
+    - readAt : Instant
+    - createdAt : Instant
+    --
+    + markAsRead() : void
+  }
+}
+
+package "Catálogo de moda" {
+  class Product <<planejada>> #F2F2F2 {
+    - id : UUID
+    - code : String
+    - name : String
+    - description : String
+    - status : ProductStatusEnum
+    - height : BigDecimal
+    - width : BigDecimal
+    - depth : BigDecimal
+    - weight : BigDecimal
+    - createdAt : Instant
+    - updatedAt : Instant
+    --
+    + activate(reason : String) : void
+    + inactivate(reason : String) : void
+  }
+
+  class ProductVariation <<planejada>> #F2F2F2 {
+    - id : UUID
+    - sku : String
+    - size : String
+    - color : String
+    - salePrice : BigDecimal
+    - availableQuantity : int
+    - reservedQuantity : int
+    - status : ProductStatusEnum
+    --
+    + reserve(quantity : int) : void
+    + releaseReservation(quantity : int) : void
+    + decreaseStock(quantity : int) : void
+    + increaseStock(quantity : int) : void
+  }
+
+  class ProductImage <<planejada>> #F2F2F2 {
+    - id : UUID
+    - url : String
+    - altText : String
+    - position : int
+    - cover : boolean
+  }
+
+  class Category <<planejada>> #F2F2F2 {
+    - id : UUID
+    - name : String
+    - active : boolean
+  }
+
+  class Brand <<planejada>> #F2F2F2 {
+    - id : UUID
+    - name : String
+    - active : boolean
+  }
+
+  class Supplier <<planejada>> #F2F2F2 {
+    - id : UUID
+    - corporateName : String
+    - document : String
+    - email : String
+    - active : boolean
+  }
+
+  class PricingGroup <<planejada>> #F2F2F2 {
+    - id : UUID
+    - name : String
+    - profitMargin : BigDecimal
+    - active : boolean
+    --
+    + calculateSalePrice(cost : BigDecimal) : BigDecimal
+  }
+}
+
+package "Estoque" {
+  class InventoryMovement <<planejada>> #F2F2F2 {
+    - id : UUID
+    - type : InventoryMovementTypeEnum
+    - quantity : int
+    - unitCost : BigDecimal
+    - occurredAt : Instant
+    - description : String
+  }
+
+  class StockReservation <<planejada>> #F2F2F2 {
+    - id : UUID
+    - quantity : int
+    - reservedAt : Instant
+    - expiresAt : Instant
+    - releasedAt : Instant
+    - status : ReservationStatusEnum
+    --
+    + release() : void
+    + expire() : void
+  }
+}
+
+package "Carrinho e vendas" {
+  class Cart <<planejada>> #F2F2F2 {
+    - id : UUID
+    - status : CartStatusEnum
+    - createdAt : Instant
+    - updatedAt : Instant
+    --
+    + addItem(variation : ProductVariation, quantity : int) : void
+    + updateItemQuantity(itemId : UUID, quantity : int) : void
+    + removeItem(itemId : UUID) : void
+    + clear() : void
+  }
+
+  class CartItem <<planejada>> #F2F2F2 {
+    - id : UUID
+    - quantity : int
+    - unitPrice : BigDecimal
+    - addedAt : Instant
+  }
+
+  class Order <<planejada>> #F2F2F2 {
+    - id : UUID
+    - number : String
+    - status : OrderStatusEnum
+    - subtotal : BigDecimal
+    - freightAmount : BigDecimal
+    - discountAmount : BigDecimal
+    - totalAmount : BigDecimal
+    - createdAt : Instant
+    - approvedAt : Instant
+    - deliveredAt : Instant
+    --
+    + approve() : void
+    + reject() : void
+    + dispatch() : void
+    + confirmDelivery() : void
+  }
+
+  class OrderItem <<planejada>> #F2F2F2 {
+    - id : UUID
+    - productName : String
+    - variationDescription : String
+    - quantity : int
+    - unitPrice : BigDecimal
+    - totalPrice : BigDecimal
+  }
+
+  class ShippingAddressSnapshot <<planejada>> #F2F2F2 {
+    - id : UUID
+    - recipientName : String
+    - street : String
+    - number : String
+    - neighborhood : String
+    - zipCode : String
+    - city : String
+    - state : String
+    - country : String
+    - notes : String
+  }
+
+  class Delivery <<planejada>> #F2F2F2 {
+    - id : UUID
+    - carrier : String
+    - trackingCode : String
+    - estimatedDeliveryDate : LocalDate
+    - dispatchedAt : Instant
+    - deliveredAt : Instant
+  }
+
+  class Payment <<planejada>> #F2F2F2 {
+    - id : UUID
+    - type : PaymentTypeEnum
+    - amount : BigDecimal
+    - status : PaymentStatusEnum
+    - gatewayTransactionId : String
+    - processedAt : Instant
+    --
+    + approve() : void
+    + reject() : void
+  }
+}
+
+package "Cupons e trocas" {
+  class Coupon <<planejada>> #F2F2F2 {
+    - id : UUID
+    - code : String
+    - type : CouponTypeEnum
+    - value : BigDecimal
+    - status : CouponStatusEnum
+    - expiresAt : Instant
+    - minimumOrderValue : BigDecimal
+    --
+    + use() : void
+    + expire() : void
+    + deactivate() : void
+  }
+
+  class CouponUsage <<planejada>> #F2F2F2 {
+    - id : UUID
+    - usedAmount : BigDecimal
+    - usedAt : Instant
+  }
+
+  class Exchange <<planejada>> #F2F2F2 {
+    - id : UUID
+    - code : String
+    - status : ExchangeStatusEnum
+    - requestedAt : Instant
+    - authorizedAt : Instant
+    - receivedAt : Instant
+    --
+    + authorize() : void
+    + confirmReceipt(returnToStock : boolean) : void
+  }
+
+  class ExchangeItem <<planejada>> #F2F2F2 {
+    - id : UUID
+    - quantity : int
+    - reason : String
+    - returnToStock : boolean
+  }
+}
+
+package "Auditoria" {
+  class AuditLog <<planejada>> #F2F2F2 {
+    - id : UUID
+    - entityName : String
+    - entityId : UUID
+    - operation : AuditOperationEnum
+    - oldData : String
+    - newData : String
+    - occurredAt : Instant
+  }
+}
+
+package "Enumerações" {
+  enum CustomerStatusEnum #FFF7D6 {
+    ATIVO
+    INATIVO
+  }
+  enum GenderEnum #FFF7D6 {
+    FEMININO
+    MASCULINO
+    NAO_BINARIO
+    PREFIRO_NAO_INFORMAR
+  }
+  enum PhoneTypeEnum #FFF7D6 {
+    CELULAR
+    RESIDENCIAL
+    COMERCIAL
+  }
+  enum PurposeEnum #FFF7D6 {
+    RESIDENCIA
+    COBRANCA
+    ENTREGA
+  }
+  enum StateEnum #FFF7D6
+  enum CardFlagEnum #FFF7D6 {
+    VISA
+    MASTERCARD
+    ELO
+    AMERICAN_EXPRESS
+  }
+  enum UserRoleEnum #FFF7D6 {
+    CUSTOMER
+    ADMINISTRATOR
+  }
+  enum NotificationTypeEnum #FFF7D6 {
+    ORDER
+    EXCHANGE
+    STOCK
+    SYSTEM
+  }
+  enum ProductStatusEnum #FFF7D6 {
+    ATIVO
+    INATIVO
+  }
+  enum InventoryMovementTypeEnum #FFF7D6 {
+    ENTRADA
+    RESERVA
+    LIBERACAO
+    BAIXA_VENDA
+    REENTRADA_TROCA
+  }
+  enum ReservationStatusEnum #FFF7D6 {
+    ATIVA
+    LIBERADA
+    EXPIRADA
+    CONVERTIDA_EM_PEDIDO
+  }
+  enum CartStatusEnum #FFF7D6 {
+    ATIVO
+    CONVERTIDO
+    EXPIRADO
+    ABANDONADO
+  }
+  enum OrderStatusEnum #FFF7D6 {
+    EM_PROCESSAMENTO
+    APROVADA
+    REPROVADA
+    EM_TRANSPORTE
+    ENTREGUE
+    EM_TROCA
+    TROCA_AUTORIZADA
+    TROCADO
+    CANCELADA
+  }
+  enum PaymentTypeEnum #FFF7D6 {
+    CARTAO
+    CUPOM_PROMOCIONAL
+    CUPOM_TROCA
+  }
+  enum PaymentStatusEnum #FFF7D6 {
+    PENDENTE
+    APROVADO
+    RECUSADO
+  }
+  enum CouponTypeEnum #FFF7D6 {
+    PROMOCIONAL
+    TROCA
+  }
+  enum CouponStatusEnum #FFF7D6 {
+    ATIVO
+    UTILIZADO
+    EXPIRADO
+    INATIVO
+  }
+  enum ExchangeStatusEnum #FFF7D6 {
+    EM_TROCA
+    TROCA_AUTORIZADA
+    TROCADO
+    RECUSADA
+  }
+  enum AuditOperationEnum #FFF7D6 {
+    INSERT
+    UPDATE
+    DELETE
+    STATUS_CHANGE
+  }
+}
+
+' Relacionamentos já implementados
+Customer "1" *-- "1" User : credenciais
+Customer "1" *-- "1..*" Phone
+Customer "1" *-- "1..*" Address
+Customer "1" *-- "0..*" CreditCard
+Address "0..*" --> "1" ResidenceType
+Address "0..*" --> "1" PublicPlaceType
+Address ..> PurposeEnum
+Address ..> StateEnum
+Customer ..> CustomerStatusEnum
+Customer ..> GenderEnum
+Phone ..> PhoneTypeEnum
+CreditCard ..> CardFlagEnum
+
+' Relacionamentos planejados de acesso
+User "0..*" -- "0..*" Role
+User "1" *-- "0..*" RefreshToken
+Customer "1" *-- "0..*" Notification
+AuditLog "0..*" --> "0..1" User : responsável
+Role ..> UserRoleEnum
+Notification ..> NotificationTypeEnum
+AuditLog ..> AuditOperationEnum
+
+' Catálogo e estoque
+Product "1" *-- "1..*" ProductVariation
+Product "1" *-- "1..*" ProductImage
+Product "0..*" -- "1..*" Category
+Product "0..*" --> "1" Brand
+Product "0..*" --> "1" PricingGroup
+ProductVariation "1" *-- "0..*" InventoryMovement
+ProductVariation "1" *-- "0..*" StockReservation
+InventoryMovement "0..*" --> "0..1" Supplier
+Product ..> ProductStatusEnum
+ProductVariation ..> ProductStatusEnum
+InventoryMovement ..> InventoryMovementTypeEnum
+StockReservation ..> ReservationStatusEnum
+
+' Carrinho, reserva e pedido
+Customer "1" *-- "0..*" Cart
+Cart "1" *-- "1..*" CartItem
+CartItem "0..*" --> "1" ProductVariation
+Cart "1" *-- "0..*" StockReservation
+Cart ..> CartStatusEnum
+Customer "1" --> "0..*" Order
+Order "1" *-- "1..*" OrderItem
+OrderItem "0..*" --> "1" ProductVariation : origem
+Order "1" *-- "1" ShippingAddressSnapshot
+Order "1" *-- "0..1" Delivery
+Order "1" *-- "1..*" Payment
+Order ..> OrderStatusEnum
+Payment ..> PaymentTypeEnum
+Payment ..> PaymentStatusEnum
+
+' Pagamento, cupom e troca
+Customer "1" --> "0..*" Coupon
+Order "1" *-- "0..*" CouponUsage
+CouponUsage "0..*" --> "1" Coupon
+CouponUsage "0..*" --> "1" Payment
+Payment "0..*" --> "0..1" CreditCard
+Order "1" *-- "0..*" Exchange
+Exchange "1" *-- "1..*" ExchangeItem
+ExchangeItem "0..*" --> "1" OrderItem
+Exchange "0..1" --> "0..1" Coupon : gera cupom de troca
+Coupon ..> CouponTypeEnum
+Coupon ..> CouponStatusEnum
+Exchange ..> ExchangeStatusEnum
+
+note bottom of Product
+  Produto é o item de catálogo.
+  ProductVariation representa tamanho/cor/SKU
+  e é a unidade controlada em estoque e venda.
+end note
+
+note bottom of ShippingAddressSnapshot
+  Snapshot preserva o endereço usado no pedido,
+  mesmo que o cliente altere ou exclua seu perfil depois.
+end note
+
+note bottom of Payment
+  Não armazenar número completo nem CVV.
+  Crédito atual mantém somente last4 e bandeira.
+end note
+
+note bottom of AuditLog
+  Atende ao RNF0012: registrar responsável,
+  momento e dados anteriores/posteriores da alteração.
+end note
+@enduml

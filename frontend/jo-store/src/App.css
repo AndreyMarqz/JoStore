@@ -3,6 +3,8 @@
   width: 100%;
   overflow-x: clip;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .store-main {
@@ -10,6 +12,7 @@
   flex-direction: column;
   width: 100%;
   min-width: 0;
+  flex: 1;
 }
 
 .app-shell {

@@ -110,7 +110,9 @@
   background: transparent;
   color: #1d1d1b;
   cursor: pointer;
-  transition: transform 180ms ease, color 180ms ease;
+  transition:
+    transform 180ms ease,
+    color 180ms ease;
 }
 
 .cart-count-badge {
@@ -204,8 +206,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      'brand actions'
-      'search search';
+      "brand actions"
+      "search search";
     align-items: center;
     gap: 16px;
     padding: 18px 20px;

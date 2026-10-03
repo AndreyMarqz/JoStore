@@ -129,7 +129,10 @@
   border: 1px solid rgba(17, 17, 17, 0.12);
   border-radius: 50%;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
-  transition: transform 180ms ease, color 180ms ease, border-color 180ms ease;
+  transition:
+    transform 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease;
 }
 
 .product-swiper .swiper-button-prev {
@@ -177,7 +180,7 @@
 .product-card:hover {
   position: relative;
   z-index: 1;
-  transform: scale(1.050);
+  transform: scale(1.05);
   border-color: var(--color-accent);
 }
 

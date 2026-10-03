@@ -6,7 +6,12 @@ import { PasswordField } from "../../components/PasswordField/PasswordField";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
 import type { AddressRole, ClientDetails, ToastState } from "../../types/store";
-import { brazilianStates, countries, residenceTypes, streetTypes } from "../../utils/addressOptions";
+import {
+  brazilianStates,
+  countries,
+  residenceTypes,
+  streetTypes,
+} from "../../utils/addressOptions";
 import {
   createEmptyClientRegistration,
   validateClientRegistration,
@@ -72,15 +77,17 @@ export function ClientRegistrationPage({
 
       setForm((current) => ({
         ...current,
-        addresses: [{
-          ...current.addresses[0],
-          zipCode: lookup.zipCode,
-          street: lookup.street,
-          neighborhood: lookup.neighborhood,
-          city: lookup.city,
-          state: lookup.state,
-          country: lookup.country,
-        }],
+        addresses: [
+          {
+            ...current.addresses[0],
+            zipCode: lookup.zipCode,
+            street: lookup.street,
+            neighborhood: lookup.neighborhood,
+            city: lookup.city,
+            state: lookup.state,
+            country: lookup.country,
+          },
+        ],
       }));
     } catch (error) {
       if (requestId !== zipCodeLookupRequest.current) return;
@@ -434,7 +441,9 @@ export function ClientRegistrationPage({
                     <input
                       data-cy="client-address-zip-code"
                       value={address.zipCode}
-                      onChange={(event) => void updateZipCode(event.target.value)}
+                      onChange={(event) =>
+                        void updateZipCode(event.target.value)
+                      }
                       aria-busy={isLookingUpZipCode}
                     />
                   </label>
@@ -459,7 +468,9 @@ export function ClientRegistrationPage({
                     >
                       <option value="">Selecione</option>
                       {brazilianStates.map((state) => (
-                        <option key={state} value={state}>{state}</option>
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -474,7 +485,9 @@ export function ClientRegistrationPage({
                     >
                       <option value="">Selecione</option>
                       {countries.map((country) => (
-                        <option key={country.code} value={country.name}>{country.name}</option>
+                        <option key={country.code} value={country.name}>
+                          {country.name}
+                        </option>
                       ))}
                     </select>
                   </label>

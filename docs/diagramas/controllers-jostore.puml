@@ -1,0 +1,142 @@
+@startuml
+title JoStore - Diagrama de Classes de Controle
+hide empty members
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #303030
+  FontName Arial
+  FontSize 12
+}
+skinparam packageStyle rectangle
+
+legend right
+|= Cor |= Situação |
+|<#DCEBFF> Azul | Implementada |
+|<#F2F2F2> Cinza | Planejada |
+endlegend
+
+package "Gestão de clientes" {
+  class CustomerController <<implementada>> #DCEBFF {
+    - customerService : CustomerService
+    --
+    + register(request : CustomerRegistrationRequestDto) : ResponseEntity<CustomerResponseDto>
+    + list(code : String, fullName : String, cpf : String, email : String, status : CustomerStatusEnum, page : int, size : int) : Page<CustomerSummaryResponseDto>
+    + getById(customerId : UUID) : CustomerResponseDto
+    + update(customerId : UUID, request : CustomerUpdateRequestDto) : CustomerResponseDto
+    + updatePassword(customerId : UUID, request : CustomerPasswordUpdateRequestDto) : ResponseEntity<Void>
+    + updateStatus(customerId : UUID, request : CustomerStatusUpdateRequestDto) : CustomerResponseDto
+  }
+
+  class AddressController <<implementada>> #DCEBFF {
+    - customerService : CustomerService
+    --
+    + add(customerId : UUID, request : AddressRequestDto) : ResponseEntity<CustomerResponseDto>
+    + update(customerId : UUID, addressId : UUID, request : AddressRequestDto) : CustomerResponseDto
+    + delete(customerId : UUID, addressId : UUID) : ResponseEntity<Void>
+  }
+
+  class CreditCardController <<implementada>> #DCEBFF {
+    - customerService : CustomerService
+    --
+    + add(customerId : UUID, request : CreditCardRequestDto) : ResponseEntity<CustomerResponseDto>
+    + delete(customerId : UUID, cardId : UUID) : ResponseEntity<Void>
+    + setPreferred(customerId : UUID, cardId : UUID) : CustomerResponseDto
+  }
+}
+
+package "Acesso e catálogo" {
+  class AuthenticationController <<planejada>> #F2F2F2 {
+    - authenticationService : AuthenticationService
+    --
+    + login(request : LoginRequestDto) : ResponseEntity<LoginResponseDto>
+    + refreshToken(request : RefreshTokenRequestDto) : ResponseEntity<LoginResponseDto>
+    + logout() : ResponseEntity<Void>
+  }
+
+  class ProductController <<planejada>> #F2F2F2 {
+    - productService : ProductService
+    --
+    + create(request : ProductRequestDto) : ResponseEntity<ProductResponseDto>
+    + list(filter : ProductFilterDto, page : int, size : int) : Page<ProductSummaryResponseDto>
+    + getById(productId : UUID) : ProductResponseDto
+    + update(productId : UUID, request : ProductRequestDto) : ProductResponseDto
+    + updateStatus(productId : UUID, request : ProductStatusUpdateRequestDto) : ProductResponseDto
+    + addVariation(productId : UUID, request : ProductVariationRequestDto) : ProductResponseDto
+    + updateVariation(productId : UUID, variationId : UUID, request : ProductVariationRequestDto) : ProductResponseDto
+    + deleteVariation(productId : UUID, variationId : UUID) : ResponseEntity<Void>
+  }
+
+  class InventoryController <<planejada>> #F2F2F2 {
+    - inventoryService : InventoryService
+    --
+    + registerEntry(request : InventoryEntryRequestDto) : ResponseEntity<InventoryMovementResponseDto>
+    + listMovements(variationId : UUID, page : int, size : int) : Page<InventoryMovementResponseDto>
+    + getAvailableQuantity(variationId : UUID) : InventoryBalanceResponseDto
+  }
+}
+
+package "Compra e pedidos" {
+  class CartController <<planejada>> #F2F2F2 {
+    - cartService : CartService
+    --
+    + getCurrentCart(customerId : UUID) : CartResponseDto
+    + addItem(customerId : UUID, request : CartItemRequestDto) : CartResponseDto
+    + updateItemQuantity(customerId : UUID, itemId : UUID, request : CartItemQuantityRequestDto) : CartResponseDto
+    + removeItem(customerId : UUID, itemId : UUID) : ResponseEntity<Void>
+    + clear(customerId : UUID) : ResponseEntity<Void>
+  }
+
+  class CheckoutController <<planejada>> #F2F2F2 {
+    - checkoutService : CheckoutService
+    --
+    + preview(customerId : UUID, request : CheckoutPreviewRequestDto) : CheckoutResponseDto
+    + finish(customerId : UUID, request : CheckoutRequestDto) : ResponseEntity<OrderResponseDto>
+  }
+
+  class OrderController <<planejada>> #F2F2F2 {
+    - orderService : OrderService
+    --
+    + listByCustomer(customerId : UUID, page : int, size : int) : Page<OrderSummaryResponseDto>
+    + getById(customerId : UUID, orderId : UUID) : OrderResponseDto
+    + list(filter : OrderFilterDto, page : int, size : int) : Page<OrderSummaryResponseDto>
+    + approvePayment(orderId : UUID) : OrderResponseDto
+    + rejectPayment(orderId : UUID, request : RejectionReasonRequestDto) : OrderResponseDto
+    + dispatch(orderId : UUID) : OrderResponseDto
+    + confirmDelivery(orderId : UUID) : OrderResponseDto
+  }
+
+  class CouponController <<planejada>> #F2F2F2 {
+    - couponService : CouponService
+    --
+    + listAvailableByCustomer(customerId : UUID) : List<CouponResponseDto>
+    + createPromotional(request : PromotionalCouponRequestDto) : ResponseEntity<CouponResponseDto>
+    + updateStatus(couponId : UUID, request : StatusRequestDto) : CouponResponseDto
+  }
+
+  class ExchangeController <<planejada>> #F2F2F2 {
+    - exchangeService : ExchangeService
+    --
+    + request(customerId : UUID, orderId : UUID, request : ExchangeRequestDto) : ExchangeResponseDto
+    + list(filter : ExchangeFilterDto, page : int, size : int) : Page<ExchangeResponseDto>
+    + authorize(exchangeId : UUID) : ExchangeResponseDto
+    + confirmReceipt(exchangeId : UUID, request : ExchangeReceiptRequestDto) : ExchangeResponseDto
+  }
+}
+
+package "Análise" {
+  class SalesAnalysisController <<planejada>> #F2F2F2 {
+    - salesAnalysisService : SalesAnalysisService
+    --
+    + getSalesHistory(filter : SalesAnalysisFilterDto) : SalesAnalysisResponseDto
+    + exportSalesHistory(filter : SalesAnalysisFilterDto) : ResponseEntity<byte[]>
+  }
+}
+
+note bottom
+  Escopo adaptado do DRS para e-commerce de moda.
+  Categoria, marca, frete e pagamento serão tratados por services
+  e DTOs dos módulos de produto e checkout, sem controller próprio.
+end note
+@enduml

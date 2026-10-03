@@ -1,0 +1,185 @@
+@startuml
+title JoStore - Diagrama da Camada de Persistência
+hide empty members
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #303030
+  FontName Arial
+  FontSize 11
+}
+
+legend right
+|= Cor |= Situação |
+|<#DCEBFF> Azul | Interface já implementada |
+|<#F2F2F2> Cinza | Interface planejada |
+|<#FFF7D6> Amarelo | Framework externo |
+endlegend
+
+package "Persistência" <<layer>> {
+  package "repository" {
+    package "Gestão de clientes" {
+      interface CustomerRepository <<implementada>> #DCEBFF {
+        + findByCpf(cpf : String) : Optional<Customer>
+        + findByUserEmailIgnoreCase(email : String) : Optional<Customer>
+        + findTopByOrderByCodeDesc() : Optional<Customer>
+      }
+
+      interface AddressRepository <<implementada>> #DCEBFF {
+        + findByIdAndCustomerId(id : UUID, customerId : UUID) : Optional<Address>
+      }
+
+      interface CreditCardRepository <<implementada>> #DCEBFF {
+        + findByIdAndCustomerId(id : UUID, customerId : UUID) : Optional<CreditCard>
+      }
+
+      interface ResidenceTypeRepository <<implementada>> #DCEBFF {
+        + findByDescriptionIgnoreCase(description : String) : Optional<ResidenceType>
+      }
+
+      interface PublicPlaceTypeRepository <<implementada>> #DCEBFF {
+        + findByDescriptionIgnoreCase(description : String) : Optional<PublicPlaceType>
+      }
+    }
+
+    package "Acesso e catálogo" {
+      interface UserRepository <<planejada>> #F2F2F2 {
+        + findByEmailIgnoreCase(email : String) : Optional<User>
+      }
+
+      interface RoleRepository <<planejada>> #F2F2F2 {
+        + findByName(name : UserRoleEnum) : Optional<Role>
+      }
+
+      interface RefreshTokenRepository <<planejada>> #F2F2F2 {
+        + findByTokenHash(tokenHash : String) : Optional<RefreshToken>
+        + findAllByUserIdAndRevokedAtIsNull(userId : UUID) : List<RefreshToken>
+      }
+
+      interface ProductRepository <<planejada>> #F2F2F2 {
+        + findByCode(code : String) : Optional<Product>
+        + findTopByOrderByCodeDesc() : Optional<Product>
+      }
+
+      interface ProductVariationRepository <<planejada>> #F2F2F2 {
+        + findBySku(sku : String) : Optional<ProductVariation>
+        + findAllByProductId(productId : UUID) : List<ProductVariation>
+      }
+
+      interface CategoryRepository <<planejada>> #F2F2F2 {
+        + findByNameIgnoreCase(name : String) : Optional<Category>
+      }
+
+      interface BrandRepository <<planejada>> #F2F2F2 {
+        + findByNameIgnoreCase(name : String) : Optional<Brand>
+      }
+
+      interface SupplierRepository <<planejada>> #F2F2F2 {
+        + findByDocument(document : String) : Optional<Supplier>
+      }
+
+      interface PricingGroupRepository <<planejada>> #F2F2F2 {
+        + findByNameIgnoreCase(name : String) : Optional<PricingGroup>
+      }
+    }
+
+    package "Estoque, carrinho e vendas" {
+      interface InventoryMovementRepository <<planejada>> #F2F2F2 {
+        + findAllByVariationId(variationId : UUID, pageable : Pageable) : Page<InventoryMovement>
+      }
+
+      interface StockReservationRepository <<planejada>> #F2F2F2 {
+        + findAllByStatusAndExpiresAtBefore(status : ReservationStatusEnum, instant : Instant) : List<StockReservation>
+      }
+
+      interface CartRepository <<planejada>> #F2F2F2 {
+        + findByCustomerIdAndStatus(customerId : UUID, status : CartStatusEnum) : Optional<Cart>
+      }
+
+      interface OrderRepository <<planejada>> #F2F2F2 {
+        + findByNumber(number : String) : Optional<Order>
+        + findAllByCustomerId(customerId : UUID, pageable : Pageable) : Page<Order>
+      }
+
+      interface CouponRepository <<planejada>> #F2F2F2 {
+        + findAllByCustomerIdAndStatus(customerId : UUID, status : CouponStatusEnum) : List<Coupon>
+        + findByCode(code : String) : Optional<Coupon>
+      }
+
+      interface ExchangeRepository <<planejada>> #F2F2F2 {
+        + findAllByStatus(status : ExchangeStatusEnum, pageable : Pageable) : Page<Exchange>
+        + findAllByOrderId(orderId : UUID) : List<Exchange>
+      }
+    }
+
+    package "Suporte" {
+      interface NotificationRepository <<planejada>> #F2F2F2 {
+        + findAllByCustomerIdAndReadAtIsNull(customerId : UUID) : List<Notification>
+      }
+
+      interface AuditLogRepository <<planejada>> #F2F2F2 {
+        + findAllByEntityNameAndEntityId(entityName : String, entityId : UUID, pageable : Pageable) : Page<AuditLog>
+      }
+    }
+  }
+
+  package "Spring Data JPA" <<framework>> {
+    interface "JpaRepository<T, ID>" as JpaRepository #FFF7D6 {
+      + save(entity : T) : T
+      + findById(id : ID) : Optional<T>
+      + findAll(pageable : Pageable) : Page<T>
+      + delete(entity : T) : void
+    }
+
+    interface "JpaSpecificationExecutor<T>" as JpaSpecificationExecutor #FFF7D6 {
+      + findAll(specification : Specification<T>, pageable : Pageable) : Page<T>
+    }
+
+    class Hibernate <<ORM>> #FFF7D6
+  }
+}
+
+' Interfaces atuais e futuras estendem a abstração do Spring Data JPA.
+CustomerRepository ..|> JpaRepository
+CustomerRepository ..|> JpaSpecificationExecutor
+AddressRepository ..|> JpaRepository
+CreditCardRepository ..|> JpaRepository
+ResidenceTypeRepository ..|> JpaRepository
+PublicPlaceTypeRepository ..|> JpaRepository
+
+UserRepository ..|> JpaRepository
+RoleRepository ..|> JpaRepository
+RefreshTokenRepository ..|> JpaRepository
+ProductRepository ..|> JpaRepository
+ProductRepository ..|> JpaSpecificationExecutor
+ProductVariationRepository ..|> JpaRepository
+CategoryRepository ..|> JpaRepository
+BrandRepository ..|> JpaRepository
+SupplierRepository ..|> JpaRepository
+PricingGroupRepository ..|> JpaRepository
+InventoryMovementRepository ..|> JpaRepository
+StockReservationRepository ..|> JpaRepository
+CartRepository ..|> JpaRepository
+OrderRepository ..|> JpaRepository
+OrderRepository ..|> JpaSpecificationExecutor
+CouponRepository ..|> JpaRepository
+ExchangeRepository ..|> JpaRepository
+NotificationRepository ..|> JpaRepository
+AuditLogRepository ..|> JpaRepository
+
+JpaRepository ..> Hibernate : utiliza JPA
+
+note bottom of JpaRepository
+  Spring Data JPA fornece as operações CRUD.
+  Hibernate executa o mapeamento objeto-relacional
+  e a comunicação com o PostgreSQL.
+end note
+
+note bottom of CustomerRepository
+  Repositories são interfaces, não classes DAO manuais.
+  O Spring cria suas implementações em tempo de execução.
+end note
+@enduml

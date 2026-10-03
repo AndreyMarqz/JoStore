@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import type { CardPayment } from "../../services/orderGateway";
 import { brazilianStates, countries } from "../../utils/addressOptions";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
@@ -23,7 +24,11 @@ type CheckoutPageProps = {
   onOpenCoupons: () => void;
   onClientChanged: (client: ClientDetails) => void;
   onShowToast: (toast: Exclude<ToastState, null>) => void;
-  onConfirmPurchase: (cards: ClientCard[], address: ClientAddress) => void;
+  onConfirmPurchase: (
+    cards: ClientCard[],
+    address: ClientAddress,
+    cardPayments: CardPayment[],
+  ) => void;
 };
 
 const emptyCardForm: CardCreateInput = {
@@ -74,12 +79,16 @@ export function CheckoutPage({
   const [selectedAddressId, setSelectedAddressId] = useState(
     () => deliveryAddresses[0]?.id ?? "",
   );
+  const [cardAmounts, setCardAmounts] = useState<Record<string, string>>({});
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [isEditingCardPreferred, setIsEditingCardPreferred] = useState(false);
-  const [isAddressComplementNotApplicable, setIsAddressComplementNotApplicable] = useState(false);
+  const [
+    isAddressComplementNotApplicable,
+    setIsAddressComplementNotApplicable,
+  ] = useState(false);
   const [cardForm, setCardForm] = useState<CardCreateInput>(emptyCardForm);
   const [addressForm, setAddressForm] =
     useState<ClientAddressInput>(createEmptyAddress);
@@ -87,21 +96,28 @@ export function CheckoutPage({
   const selectedCards = client.cards.filter((card) =>
     selectedCardIds.includes(card.id),
   );
-  const cardSplitAmounts = (() => {
-    if (selectedCards.length < 2) return [];
+  const selectedAddress = deliveryAddresses.find(
+    (address) => address.id === selectedAddressId,
+  );
+
+  useEffect(() => {
+    if (selectedCards.length === 0) {
+      setCardAmounts({});
+      return;
+    }
 
     const totalInCents = Math.round(finalTotal * 100);
     const baseAmount = Math.floor(totalInCents / selectedCards.length);
     const remainder = totalInCents % selectedCards.length;
-
-    return selectedCards.map((card, index) => ({
-      card,
-      amount: (baseAmount + (index < remainder ? 1 : 0)) / 100,
-    }));
-  })();
-  const selectedAddress = deliveryAddresses.find(
-    (address) => address.id === selectedAddressId,
-  );
+    setCardAmounts(
+      Object.fromEntries(
+        selectedCards.map((card, index) => [
+          card.id,
+          ((baseAmount + (index < remainder ? 1 : 0)) / 100).toFixed(2),
+        ]),
+      ),
+    );
+  }, [finalTotal, selectedCardIds.join("|")]);
   const editingCard = editingCardId
     ? client.cards.find((card) => card.id === editingCardId)
     : undefined;
@@ -129,8 +145,12 @@ export function CheckoutPage({
     try {
       const result = await customerGateway.lookupAddress(zipCode);
       const streetTypes = ["Rua", "Avenida", "Alameda", "Praça"];
-      const streetType = streetTypes.find((type) => result.street.startsWith(`${type} `));
-      const street = streetType ? result.street.slice(streetType.length).trim() : result.street;
+      const streetType = streetTypes.find((type) =>
+        result.street.startsWith(`${type} `),
+      );
+      const street = streetType
+        ? result.street.slice(streetType.length).trim()
+        : result.street;
       setAddressForm((current) => ({
         ...current,
         zipCode: result.zipCode,
@@ -147,13 +167,17 @@ export function CheckoutPage({
   }
 
   function keepCardOrder(updatedClient: ClientDetails): ClientDetails {
-    const cardsById = new Map(updatedClient.cards.map((card) => [card.id, card]));
+    const cardsById = new Map(
+      updatedClient.cards.map((card) => [card.id, card]),
+    );
     const currentCardIds = new Set(client.cards.map((card) => card.id));
     const cardsInCurrentOrder = client.cards.flatMap((card) => {
       const updatedCard = cardsById.get(card.id);
       return updatedCard ? [updatedCard] : [];
     });
-    const newCards = updatedClient.cards.filter((card) => !currentCardIds.has(card.id));
+    const newCards = updatedClient.cards.filter(
+      (card) => !currentCardIds.has(card.id),
+    );
 
     return { ...updatedClient, cards: [...cardsInCurrentOrder, ...newCards] };
   }
@@ -166,11 +190,15 @@ export function CheckoutPage({
         ? await customerGateway.updateCard(client.id, editingCardId, cardForm)
         : await customerGateway.addCard(client.id, cardForm);
       if (editingCardId && isEditingCardPreferred && !editingCard?.preferred) {
-        updatedClient = await customerGateway.setPreferredCard(client.id, editingCardId);
+        updatedClient = await customerGateway.setPreferredCard(
+          client.id,
+          editingCardId,
+        );
       }
       const newCard = updatedClient.cards.at(-1);
       onClientChanged(keepCardOrder(updatedClient));
-      if (!editingCardId && newCard) setSelectedCardIds((current) => [...current, newCard.id]);
+      if (!editingCardId && newCard)
+        setSelectedCardIds((current) => [...current, newCard.id]);
       setCardForm(emptyCardForm);
       setEditingCardId(null);
       setIsEditingCardPreferred(false);
@@ -178,7 +206,9 @@ export function CheckoutPage({
       onShowToast({
         variant: "success",
         title: editingCardId ? "Cartão atualizado" : "Cartão salvo",
-        message: editingCardId ? "Os dados do cartão foram atualizados." : "O cartão foi associado ao seu perfil.",
+        message: editingCardId
+          ? "Os dados do cartão foram atualizados."
+          : "O cartão foi associado ao seu perfil.",
       });
     } catch (error) {
       showError(error, "Não foi possível salvar o cartão.");
@@ -188,7 +218,12 @@ export function CheckoutPage({
   function handleEditCard(card: ClientCard) {
     setEditingCardId(card.id);
     setIsEditingCardPreferred(card.preferred);
-    setCardForm({ number: "", holder: card.holder, brand: card.brand, securityCode: "" });
+    setCardForm({
+      number: "",
+      holder: card.holder,
+      brand: card.brand,
+      securityCode: "",
+    });
     setIsAddingCard(true);
   }
 
@@ -213,10 +248,16 @@ export function CheckoutPage({
     try {
       const addressPayload = {
         ...addressForm,
-        complement: isAddressComplementNotApplicable ? undefined : addressForm.complement,
+        complement: isAddressComplementNotApplicable
+          ? undefined
+          : addressForm.complement,
       };
       const updatedClient = editingAddressId
-        ? await customerGateway.updateAddress(client.id, editingAddressId, addressPayload)
+        ? await customerGateway.updateAddress(
+            client.id,
+            editingAddressId,
+            addressPayload,
+          )
         : await customerGateway.addAddress(client.id, addressPayload);
       const newAddress = updatedClient.addresses.at(-1);
       onClientChanged(updatedClient);
@@ -228,7 +269,9 @@ export function CheckoutPage({
       onShowToast({
         variant: "success",
         title: editingAddressId ? "Endereço atualizado" : "Endereço salvo",
-        message: editingAddressId ? "Os dados do endereço foram atualizados." : "O endereço de entrega foi associado ao perfil.",
+        message: editingAddressId
+          ? "Os dados do endereço foram atualizados."
+          : "O endereço de entrega foi associado ao perfil.",
       });
     } catch (error) {
       showError(error, "Não foi possível salvar o endereço.");
@@ -299,7 +342,25 @@ export function CheckoutPage({
       return;
     }
 
-    onConfirmPurchase(selectedCards, selectedAddress);
+    const cardPayments = selectedCards.map((card) => ({
+      cardId: card.id,
+      amount: Number((cardAmounts[card.id] ?? "").replace(",", ".")),
+    }));
+
+    if (
+      cardPayments.some(
+        (payment) => !Number.isFinite(payment.amount) || payment.amount <= 0,
+      )
+    ) {
+      onShowToast({
+        variant: "error",
+        title: "Pagamento pendente",
+        message: "Informe um valor válido para cada cartão selecionado.",
+      });
+      return;
+    }
+
+    onConfirmPurchase(selectedCards, selectedAddress, cardPayments);
   }
 
   return (
@@ -389,21 +450,29 @@ export function CheckoutPage({
               <p className="checkout-empty-note">Nenhum cartão cadastrado.</p>
             )}
 
-            {cardSplitAmounts.length > 0 ? (
+            {selectedCards.length > 0 ? (
               <div className="checkout-payment-split">
-                <p>
-                  Valor dividido entre {cardSplitAmounts.length} cartões
-                </p>
+                <p>Informe o valor a cobrar em cada cartão.</p>
                 <div className="checkout-payment-split-list">
-                  {cardSplitAmounts.map(({ card, amount }) => (
+                  {selectedCards.map((card) => (
                     <div key={card.id}>
-                      <span>{card.brand} final {card.last4}</span>
-                      <strong>
-                        {amount.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
-                      </strong>
+                      <span>
+                        {card.brand} final {card.last4}
+                      </span>
+                      <input
+                        aria-label={`Valor no cartão ${card.brand} final ${card.last4}`}
+                        inputMode="decimal"
+                        value={cardAmounts[card.id] ?? ""}
+                        onChange={(event) =>
+                          setCardAmounts((current) => ({
+                            ...current,
+                            [card.id]: event.target.value.replace(
+                              /[^\d,.]/g,
+                              "",
+                            ),
+                          }))
+                        }
+                      />
                     </div>
                   ))}
                 </div>
@@ -415,16 +484,21 @@ export function CheckoutPage({
                 className="checkout-inline-form"
                 onSubmit={handleSubmitCard}
               >
-                <p className="checkout-inline-form-label">{editingCardId ? "Editar cartão" : "Novo cartão"}</p>
+                <p className="checkout-inline-form-label">
+                  {editingCardId ? "Editar cartão" : "Novo cartão"}
+                </p>
                 {editingCard ? (
                   <p className="checkout-card-edit-note">
-                    Cartão atual: final {editingCard.last4}. Informe o número completo somente se desejar alterá-lo.
+                    Cartão atual: final {editingCard.last4}. Informe o número
+                    completo somente se desejar alterá-lo.
                   </p>
                 ) : null}
                 <input
                   required
                   inputMode="numeric"
-                  placeholder={editingCard ? "Novo número do cartão" : "Número do cartão"}
+                  placeholder={
+                    editingCard ? "Novo número do cartão" : "Número do cartão"
+                  }
                   value={cardForm.number}
                   onChange={(event) =>
                     setCardForm((current) => ({
@@ -480,7 +554,9 @@ export function CheckoutPage({
                     <input
                       type="checkbox"
                       checked={isEditingCardPreferred}
-                      onChange={(event) => setIsEditingCardPreferred(event.target.checked)}
+                      onChange={(event) =>
+                        setIsEditingCardPreferred(event.target.checked)
+                      }
                     />
                     Tornar este cartão preferencial
                   </label>
@@ -569,7 +645,11 @@ export function CheckoutPage({
                 className="checkout-inline-form"
                 onSubmit={handleSubmitAddress}
               >
-                <p className="checkout-inline-form-label">{editingAddressId ? "Editar endereço de entrega" : "Novo endereço de entrega"}</p>
+                <p className="checkout-inline-form-label">
+                  {editingAddressId
+                    ? "Editar endereço de entrega"
+                    : "Novo endereço de entrega"}
+                </p>
                 <div className="checkout-inline-form-row">
                   <input
                     required
@@ -645,9 +725,14 @@ export function CheckoutPage({
                       type="checkbox"
                       checked={isAddressComplementNotApplicable}
                       onChange={(event) => {
-                        setIsAddressComplementNotApplicable(event.target.checked);
+                        setIsAddressComplementNotApplicable(
+                          event.target.checked,
+                        );
                         if (event.target.checked) {
-                          setAddressForm((current) => ({ ...current, complement: "" }));
+                          setAddressForm((current) => ({
+                            ...current,
+                            complement: "",
+                          }));
                         }
                       }}
                     />
@@ -693,20 +778,38 @@ export function CheckoutPage({
                   <select
                     required
                     value={addressForm.state}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, state: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        state: event.target.value,
+                      }))
+                    }
                   >
                     <option value="">Estado</option>
-                    {brazilianStates.map((state) => <option key={state} value={state}>{state}</option>)}
+                    {brazilianStates.map((state) => (
+                      <option key={state} value={state}>
+                        {state}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="checkout-inline-form-row">
                   <select
                     required
                     value={addressForm.country}
-                    onChange={(event) => setAddressForm((current) => ({ ...current, country: event.target.value }))}
+                    onChange={(event) =>
+                      setAddressForm((current) => ({
+                        ...current,
+                        country: event.target.value,
+                      }))
+                    }
                   >
                     <option value="">País</option>
-                    {countries.map((country) => <option key={country.code} value={country.name}>{country.name}</option>)}
+                    {countries.map((country) => (
+                      <option key={country.code} value={country.name}>
+                        {country.name}
+                      </option>
+                    ))}
                   </select>
                   <input
                     required

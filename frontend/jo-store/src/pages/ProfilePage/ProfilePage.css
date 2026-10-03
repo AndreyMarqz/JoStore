@@ -12,26 +12,18 @@
 
 .profile-page-with-navigation {
   position: relative;
-  padding-left: 324px;
 }
 
-.profile-account-navigation {
-  position: absolute;
-  top: 136px;
-  left: 72px;
-  width: 220px;
-}
-
-.profile-page-with-navigation>.profile-panel {
+.profile-page-with-navigation .profile-content > .profile-panel {
   display: none;
 }
 
-.profile-page--info>.profile-panel:nth-of-type(1),
-.profile-page--edit>.profile-panel:nth-of-type(2),
-.profile-page--password>.profile-panel:nth-of-type(3),
-.profile-page--addresses>.profile-panel:nth-of-type(4),
-.profile-page--cards>.profile-panel:nth-of-type(5),
-.profile-page--orders>.profile-panel:nth-of-type(6) {
+.profile-page--info .profile-content > .profile-panel:nth-of-type(1),
+.profile-page--edit .profile-content > .profile-panel:nth-of-type(2),
+.profile-page--password .profile-content > .profile-panel:nth-of-type(3),
+.profile-page--addresses .profile-content > .profile-panel:nth-of-type(4),
+.profile-page--cards .profile-content > .profile-panel:nth-of-type(5),
+.profile-page--orders .profile-content > .profile-panel:nth-of-type(6) {
   display: block;
 }
 
@@ -174,13 +166,13 @@
 }
 
 .registration-step-content {
-  animation: registration-step-enter 280ms cubic-bezier(.2, .8, .2, 1) both;
+  animation: registration-step-enter 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .registration-login-copy {
   margin: 18px 0 0;
   color: var(--color-text-muted);
-  font-size: .9rem;
+  font-size: 0.9rem;
   text-align: center;
 }
 
@@ -212,7 +204,9 @@
 }
 
 .registration-stepper .MuiStepConnector-root.Mui-active .MuiStepConnector-line,
-.registration-stepper .MuiStepConnector-root.Mui-completed .MuiStepConnector-line {
+.registration-stepper
+  .MuiStepConnector-root.Mui-completed
+  .MuiStepConnector-line {
   border-color: var(--color-text);
 }
 
@@ -490,7 +484,7 @@
   gap: 16px;
 }
 
-.order-card-summary-row+.order-card-summary-row {
+.order-card-summary-row + .order-card-summary-row {
   margin-top: 10px;
 }
 
@@ -553,14 +547,6 @@
     padding: 40px 32px 72px;
   }
 
-  .profile-page-with-navigation {
-    padding-left: 284px;
-  }
-
-  .profile-account-navigation {
-    left: 32px;
-  }
-
   .profile-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -575,16 +561,6 @@
 @media (max-width: 820px) {
   .profile-page {
     padding: 32px 20px 56px;
-  }
-
-  .profile-page-with-navigation {
-    padding-left: 20px;
-  }
-
-  .profile-account-navigation {
-    position: static;
-    width: auto;
-    margin-bottom: 24px;
   }
 
   .profile-info-grid {
@@ -622,10 +598,6 @@
 @media (max-width: 520px) {
   .profile-page {
     padding: 24px 16px 44px;
-  }
-
-  .profile-page-with-navigation {
-    padding-left: 16px;
   }
 
   .profile-page-title {

@@ -5,8 +5,8 @@ type CartPageProps = {
   cartItems: CartItem[];
   onBackToHome: () => void;
   onOpenCoupons: () => void;
-  onUpdateItemQuantity: (itemId: number, nextQuantity: number) => void;
-  onRemoveItem: (itemId: number) => void;
+  onUpdateItemQuantity: (itemId: string, nextQuantity: number) => void;
+  onRemoveItem: (itemId: string) => void;
   subtotal: number;
   shippingTotal: number;
   couponDiscountTotal: number;
@@ -54,7 +54,7 @@ export function CartPage({
           {cartItems.length > 0 ? (
             <div className="cart-items-list">
               {cartItems.map((item) => (
-                <article key={item.id} className="cart-item-card">
+                <article key={item.cartItemId} className="cart-item-card">
                   <div
                     className={`cart-item-media ${item.accent}`}
                     aria-hidden="true"
@@ -82,7 +82,10 @@ export function CartPage({
                           className="cart-item-stepper-button"
                           aria-label={`Diminuir quantidade de ${item.name}`}
                           onClick={() =>
-                            onUpdateItemQuantity(item.id, item.quantity - 1)
+                            onUpdateItemQuantity(
+                              item.cartItemId,
+                              item.quantity - 1,
+                            )
                           }
                         >
                           -
@@ -95,7 +98,10 @@ export function CartPage({
                           className="cart-item-stepper-button"
                           aria-label={`Aumentar quantidade de ${item.name}`}
                           onClick={() =>
-                            onUpdateItemQuantity(item.id, item.quantity + 1)
+                            onUpdateItemQuantity(
+                              item.cartItemId,
+                              item.quantity + 1,
+                            )
                           }
                         >
                           +
@@ -105,7 +111,7 @@ export function CartPage({
                       <button
                         type="button"
                         className="cart-item-remove"
-                        onClick={() => onRemoveItem(item.id)}
+                        onClick={() => onRemoveItem(item.cartItemId)}
                       >
                         Remover item
                       </button>

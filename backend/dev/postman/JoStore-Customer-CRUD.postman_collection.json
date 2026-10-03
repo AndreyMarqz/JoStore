@@ -1,0 +1,303 @@
+{
+  "info": {
+    "_postman_id": "983dfbfe-99b8-4ce8-9621-174cd4085e88",
+    "name": "JoStore Customer CRUD",
+    "description": "Collection para demonstrar RF0021 a RF0028, RN0021 a RN0026 e RNF0031 a RNF0035 do módulo de clientes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "customerId",
+      "value": ""
+    },
+    {
+      "key": "addressId",
+      "value": ""
+    },
+    {
+      "key": "cardId",
+      "value": ""
+    },
+    {
+      "key": "email",
+      "value": "ana.cliente@example.com"
+    },
+    {
+      "key": "password",
+      "value": "Senha@123"
+    },
+    {
+      "key": "newPassword",
+      "value": "NovaSenha@123"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Cadastro e consulta de clientes",
+      "item": [
+        {
+          "name": "RF0021 - Cadastrar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 201 Created', () => pm.response.to.have.status(201));",
+                  "const customer = pm.response.json();",
+                  "pm.collectionVariables.set('customerId', customer.id);",
+                  "pm.test('Cliente recebe código único', () => pm.expect(customer.code).to.match(/^CLI-\\d{6}$/));",
+                  "pm.test('Cliente inicia ativo', () => pm.expect(customer.status).to.eql('ATIVO'));",
+                  "pm.test('Senha não é exposta', () => pm.expect(customer).not.to.have.property('password'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Cliente da Silva\",\n  \"cpf\": \"12345678901\",\n  \"gender\": \"FEMININO\",\n  \"birthDate\": \"1999-03-15\",\n  \"phone\": {\n    \"type\": \"CELULAR\",\n    \"areaCode\": \"11\",\n    \"number\": \"999999999\"\n  },\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"confirmPassword\": \"{{password}}\",\n  \"addresses\": [\n    {\n      \"label\": \"Casa\",\n      \"roles\": [\"RESIDENCIA\", \"COBRANCA\", \"ENTREGA\"],\n      \"residenceType\": \"Casa\",\n      \"streetType\": \"Rua\",\n      \"street\": \"das Flores\",\n      \"number\": \"100\",\n      \"neighborhood\": \"Centro\",\n      \"zipCode\": \"01001000\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"country\": \"Brasil\",\n      \"notes\": \"Portão preto\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/customers"
+          }
+        },
+        {
+          "name": "RN0021, RN0022 e RN0026 - Rejeitar cadastro sem finalidades obrigatórias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Informa a regra de endereços obrigatórios', () => pm.expect(pm.response.json().message).to.include('residencial'))"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Sem Finalidades\",\n  \"cpf\": \"98765432100\",\n  \"gender\": \"MASCULINO\",\n  \"birthDate\": \"1990-01-01\",\n  \"phone\": { \"type\": \"CELULAR\", \"areaCode\": \"11\", \"number\": \"988888888\" },\n  \"email\": \"sem.finalidades@example.com\",\n  \"password\": \"Senha@123\",\n  \"confirmPassword\": \"Senha@123\",\n  \"addresses\": [{\n    \"label\": \"Casa\", \"roles\": [\"RESIDENCIA\"], \"residenceType\": \"Casa\", \"streetType\": \"Rua\", \"street\": \"Um\", \"number\": \"1\", \"neighborhood\": \"Centro\", \"zipCode\": \"01001000\", \"city\": \"São Paulo\", \"state\": \"SP\", \"country\": \"Brasil\"\n  }]\n}"
+            },
+            "url": "{{baseUrl}}/customers"
+          }
+        },
+        {
+          "name": "RF0024 - Consultar por filtros combinados",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/customers?email={{email}}&status=ATIVO&page=0&size=20"
+          }
+        },
+        {
+          "name": "RF0024 - Consultar cliente por identificador",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/customers/{{customerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Alteração e senha",
+      "item": [
+        {
+          "name": "RF0022 - Alterar dados cadastrais",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Cliente Atualizada\",\n  \"cpf\": \"12345678901\",\n  \"gender\": \"FEMININO\",\n  \"birthDate\": \"1999-03-15\",\n  \"phone\": { \"type\": \"CELULAR\", \"areaCode\": \"11\", \"number\": \"977777777\" },\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "RF0028, RNF0031 e RNF0032 - Alterar apenas a senha",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"password\": \"{{newPassword}}\",\n  \"confirmPassword\": \"{{newPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/password"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Endereços e cartões",
+      "item": [
+        {
+          "name": "RF0026 e RNF0034 - Adicionar endereço",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 201', () => pm.response.to.have.status(201));",
+                  "const addresses = pm.response.json().addresses;",
+                  "pm.collectionVariables.set('addressId', addresses[addresses.length - 1].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Trabalho\",\n  \"roles\": [\"ENTREGA\"],\n  \"residenceType\": \"Comercial\",\n  \"streetType\": \"Avenida\",\n  \"street\": \"Paulista\",\n  \"number\": \"1000\",\n  \"neighborhood\": \"Bela Vista\",\n  \"zipCode\": \"01310100\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"country\": \"Brasil\"\n}"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/addresses"
+          }
+        },
+        {
+          "name": "RNF0034 - Alterar endereço sem alterar cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Trabalho atualizado\",\n  \"roles\": [\"ENTREGA\"],\n  \"residenceType\": \"Comercial\",\n  \"streetType\": \"Avenida\",\n  \"street\": \"Paulista\",\n  \"number\": \"1100\",\n  \"neighborhood\": \"Bela Vista\",\n  \"zipCode\": \"01310100\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"country\": \"Brasil\"\n}"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/addresses/{{addressId}}"
+          }
+        },
+        {
+          "name": "RF0027 - Adicionar cartão preferencial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retorna 201', () => pm.response.to.have.status(201));",
+                  "const cards = pm.response.json().cards;",
+                  "pm.collectionVariables.set('cardId', cards[cards.length - 1].id);",
+                  "pm.test('Primeiro cartão é preferencial', () => pm.expect(cards[0].preferred).to.eql(true));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"holder\": \"Ana Cliente Atualizada\",\n  \"number\": \"4111111111111111\",\n  \"brand\": \"VISA\",\n  \"securityCode\": \"123\"\n}"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/cards"
+          }
+        },
+        {
+          "name": "RF0027 - Definir cartão preferencial",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/customers/{{customerId}}/cards/{{cardId}}/preferred"
+          }
+        },
+        {
+          "name": "Remover cartão",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/customers/{{customerId}}/cards/{{cardId}}"
+          }
+        },
+        {
+          "name": "Remover endereço adicional",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/customers/{{customerId}}/addresses/{{addressId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Inativação e reativação",
+      "item": [
+        {
+          "name": "RF0023 - Inativar cliente sem excluir",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"INATIVO\" }"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/status"
+          }
+        },
+        {
+          "name": "Reativar cliente",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"ATIVO\" }"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/status"
+          }
+        }
+      ]
+    }
+  ]
+}

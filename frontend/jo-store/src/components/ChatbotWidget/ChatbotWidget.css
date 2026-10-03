@@ -21,7 +21,10 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
-  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
 
 .chatbot-panel {
@@ -96,7 +99,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
   border-radius: 50%;
 }
 

@@ -1,0 +1,8 @@
+# Edit contract
+
+- **Reference:** `C:\Projetos\JoStore - Projeto\Documento de requisitos\DVP.docx`. The file is retained and will not be modified. It is open in another application, so its hash could not be read; its document structure was inspected with `python-docx`.
+- **Reference structure:** 4 portrait A4 sections. Margins are 0.39 in left/right and 0.59 in top/bottom in section 1; later sections use 0.39 in top/bottom. Existing headers, footers, title pages, tables of contents, and all content before the data-view section are preserve-only.
+- **Editable scope:** from the `Visão de Dados` heading through the document end. Replace the two existing reference diagrams in that section, adapt the existing paragraphs, complete the existing object-relational mapping table, and replace the generic performance, quality, schedule, and references content with JoStore-specific content. Keep the original headings and their overall document flow.
+- **Figure slots:** blank paragraph before `Figrua XXX – Modelo Lógico` (rId33) and blank paragraph before `Figrua XXX – Modelo Físico` (rId34). Their captions will be corrected and retained as captions.
+- **Table slots:** table 4 is the object-relational mapping table; table 5 is the macro schedule. Both will be populated and retain their existing table positions.
+- **Fidelity gates:** preserve all untouched source content and the existing section/page system. The final copy must be rendered and visually checked after editing. The bundled renderer does not currently find its packaged LibreOffice binary; an available render path must be diagnosed before delivery.

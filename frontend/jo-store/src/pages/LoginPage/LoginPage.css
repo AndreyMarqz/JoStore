@@ -21,15 +21,15 @@
   color: var(--color-text);
 }
 
-.login-panel>p {
+.login-panel > p {
   color: var(--color-text-muted);
   line-height: 1.55;
 }
 
 .login-eyebrow {
-  font-size: .82rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: .12em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -37,7 +37,7 @@
   display: grid;
   gap: 8px;
   color: var(--color-text);
-  font-size: .9rem;
+  font-size: 0.9rem;
 }
 
 .login-panel input {
@@ -61,11 +61,11 @@
 
 .login-primary:disabled {
   cursor: wait;
-  opacity: .7;
+  opacity: 0.7;
 }
 
 .login-register-copy {
-  font-size: .9rem;
+  font-size: 0.9rem;
   text-align: center;
 }
 

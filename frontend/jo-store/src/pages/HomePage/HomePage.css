@@ -24,8 +24,13 @@
 .hero-slide::after {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.08) 62%, transparent);
-  content: '';
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.46),
+    rgba(0, 0, 0, 0.08) 62%,
+    transparent
+  );
+  content: "";
   pointer-events: none;
 }
 
@@ -55,7 +60,7 @@
   line-height: 0.95;
 }
 
-.hero-slide-content>p:not(.hero-slide-eyebrow) {
+.hero-slide-content > p:not(.hero-slide-eyebrow) {
   max-width: 360px;
   margin: 20px 0 0;
   font-size: 1.05rem;
@@ -126,7 +131,10 @@
   padding: 15px;
   border-radius: 50%;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-  transition: background-color 180ms ease, transform 180ms ease, color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease,
+    color 180ms ease;
 }
 
 .hero-swiper .swiper-button-prev {
@@ -277,7 +285,7 @@
     line-height: 1;
   }
 
-  .hero-slide-content>p:not(.hero-slide-eyebrow) {
+  .hero-slide-content > p:not(.hero-slide-eyebrow) {
     margin-top: 14px;
     font-size: 0.82rem;
     line-height: 1.45;

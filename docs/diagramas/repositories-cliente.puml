@@ -1,0 +1,74 @@
+@startuml
+title JoStore - Camada de Persistência do Módulo de Clientes
+hide empty members
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #303030
+  FontName Arial
+  FontSize 12
+}
+
+package "Persistência" <<layer>> {
+  package "repository" {
+    interface CustomerRepository <<implementada>> #DCEBFF {
+      + findByCpf(cpf : String) : Optional<Customer>
+      + findByUserEmailIgnoreCase(email : String) : Optional<Customer>
+      + findTopByOrderByCodeDesc() : Optional<Customer>
+    }
+
+    interface AddressRepository <<implementada>> #DCEBFF {
+      + findByIdAndCustomerId(id : UUID, customerId : UUID) : Optional<Address>
+    }
+
+    interface CreditCardRepository <<implementada>> #DCEBFF {
+      + findByIdAndCustomerId(id : UUID, customerId : UUID) : Optional<CreditCard>
+    }
+
+    interface ResidenceTypeRepository <<implementada>> #DCEBFF {
+      + findByDescriptionIgnoreCase(description : String) : Optional<ResidenceType>
+    }
+
+    interface PublicPlaceTypeRepository <<implementada>> #DCEBFF {
+      + findByDescriptionIgnoreCase(description : String) : Optional<PublicPlaceType>
+    }
+  }
+
+  package "Spring Data JPA" <<framework>> {
+    interface "JpaRepository<T, ID>" as JpaRepository #FFF7D6 {
+      + save(entity : T) : T
+      + findById(id : ID) : Optional<T>
+      + findAll(pageable : Pageable) : Page<T>
+      + delete(entity : T) : void
+    }
+
+    interface "JpaSpecificationExecutor<T>" as JpaSpecificationExecutor #FFF7D6 {
+      + findAll(specification : Specification<T>, pageable : Pageable) : Page<T>
+    }
+
+    class Hibernate <<ORM>> #FFF7D6
+  }
+}
+
+CustomerRepository ..|> JpaRepository
+CustomerRepository ..|> JpaSpecificationExecutor
+AddressRepository ..|> JpaRepository
+CreditCardRepository ..|> JpaRepository
+ResidenceTypeRepository ..|> JpaRepository
+PublicPlaceTypeRepository ..|> JpaRepository
+JpaRepository ..> Hibernate : utiliza JPA
+
+note bottom of CustomerRepository
+  CustomerRepository permite também consultas
+  combinadas por meio de JpaSpecificationExecutor.
+end note
+
+note bottom of JpaRepository
+  Spring Data JPA cria automaticamente as
+  implementações dos repositories em tempo de execução.
+  Hibernate realiza o mapeamento objeto-relacional.
+end note
+@enduml

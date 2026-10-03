@@ -4,16 +4,12 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
 import "./App.css";
-import {
-  accentClasses,
-  availableCoupons,
-  fallbackSections,
-  fashionCategoryGroups,
-} from "./data/storeData";
+import { accentClasses, fallbackSections } from "./data/storeData";
 import { ChatbotWidget } from "./components/ChatbotWidget/ChatbotWidget";
 import { CouponModal } from "./components/CouponModal/CouponModal";
 import { ProductModal } from "./components/ProductModal/ProductModal";
 import { StoreHeader } from "./components/StoreHeader/StoreHeader";
+import { StoreFooter } from "./components/StoreFooter/StoreFooter";
 import { Toast } from "./components/Toast/Toast";
 import { AdminPage } from "./pages/AdminPage/AdminPage";
 import { CartPage } from "./pages/CartPage/CartPage";
@@ -26,7 +22,7 @@ import { ProductPage } from "./pages/ProductPage/ProductPage";
 import type {
   AdminSection,
   CartItem,
-  DummyProduct,
+  Coupon,
   Order,
   ProductCard,
   ProductSection,
@@ -36,14 +32,85 @@ import type {
   ToastState,
   ViewMode,
 } from "./types/store";
-import { buildProductSections, parseFormattedPrice } from "./utils/store";
 import {
   clearSession,
   getStoredSession,
   saveSession,
 } from "./services/authSession";
+import {
+  orderGateway,
+  type ApiCart,
+  type ApiCartItem,
+  type ApiProduct,
+  type CardPayment,
+} from "./services/orderGateway";
+import { CustomerGatewayError } from "./services/customerGateway";
+import { useCustomerGateway } from "./services/useCustomerGateway";
+
+function formatCurrency(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function mapProduct(product: ApiProduct, index = 0): ProductCard {
+  return {
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    price: formatCurrency(product.price),
+    shipping: "Frete calculado no checkout",
+    accent: accentClasses[index % accentClasses.length],
+    image: product.imageUrl ?? "",
+    images: product.imageUrl ? [product.imageUrl] : [],
+  };
+}
+
+function mapCartItem(item: ApiCartItem, index = 0): CartItem {
+  const product = mapProduct(item.product, index);
+  return {
+    ...product,
+    cartItemId: item.id,
+    quantity: item.quantity,
+    size: item.size,
+    unitPriceValue: item.unitPrice,
+    totalPriceValue: item.total,
+    totalPrice: formatCurrency(item.total),
+  };
+}
+
+function mapCart(cart: ApiCart): CartItem[] {
+  return cart.items.map(mapCartItem);
+}
+
+function productSlug(product: ProductCard) {
+  return product.name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+const pathsByView: Record<Exclude<ViewMode, "product">, string> = {
+  home: "/",
+  cart: "/carrinho",
+  checkout: "/checkout",
+  profile: "/perfil",
+  admin: "/admin",
+};
+
+function viewFromPath(pathname: string): ViewMode {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/login" || path === "/cadastro") return "profile";
+  if (/^\/produto\/[^/]+$/.test(path)) return "product";
+  return (
+    (Object.entries(pathsByView).find(([, value]) => value === path)?.[0] as
+      | ViewMode
+      | undefined) ?? "home"
+  );
+}
 
 function App() {
+  const customerGateway = useCustomerGateway();
   const [productSections, setProductSections] =
     useState<ProductSection[]>(fallbackSections);
   const [productsError, setProductsError] = useState("");
@@ -54,18 +121,103 @@ function App() {
   const [selectedSize, setSelectedSize] = useState("");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
-  const [currentView, setCurrentView] = useState<ViewMode>("home");
+  const [currentView, setCurrentView] = useState<ViewMode>(() =>
+    viewFromPath(window.location.pathname),
+  );
   const [activeClient, setActiveClient] = useState<ClientDetails | null>(
     getStoredSession,
   );
-  const [profileMode, setProfileMode] = useState<"login" | "register">("login");
+  const [profileMode, setProfileMode] = useState<"login" | "register">(() =>
+    window.location.pathname === "/cadastro" ? "register" : "login",
+  );
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("clients");
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [selectedCouponIds, setSelectedCouponIds] = useState<string[]>([]);
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
 
+  function navigate(
+    view: Exclude<ViewMode, "product">,
+    path = pathsByView[view],
+  ) {
+    if (window.location.pathname !== path) {
+      window.history.pushState({ view }, "", path);
+    }
+    setCurrentView(view);
+  }
+
   useEffect(() => {
+    function handlePopState() {
+      const view = viewFromPath(window.location.pathname);
+      if (view === "product") {
+        const productId = window.location.pathname.match(/^\/produto\/([^/]+)$/)?.[1];
+        const product = productSections
+          .flatMap((section) => section.products)
+          .find((item) => productSlug(item) === productId);
+        if (product) setSelectedProduct(product);
+      } else {
+        setSelectedProduct(null);
+      }
+      setCurrentView(view);
+      if (window.location.pathname === "/cadastro") setProfileMode("register");
+      if (window.location.pathname === "/login") setProfileMode("login");
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [productSections]);
+
+  useEffect(() => {
+    const match = window.location.pathname.match(/^\/produto\/([^/]+)$/);
+    if (!match) return;
+
+    const product = productSections
+      .flatMap((section) => section.products)
+      .find((item) => productSlug(item) === match[1]);
+    if (product) {
+      setSelectedProduct(product);
+      setCurrentView("product");
+      return;
+    }
+
+    if (productsError) {
+      window.history.replaceState({ view: "home" }, "", "/");
+      setCurrentView("home");
+    }
+  }, [productSections, productsError]);
+
+  useEffect(() => {
+    async function loadCatalog() {
+      try {
+        setProductsError("");
+        const products = await orderGateway.listProducts();
+        const cards = products.map(mapProduct);
+        setProductSections([
+          { id: "ofertas", title: "Ofertas", products: cards.slice(0, 5) },
+          {
+            id: "mais-vendidos",
+            title: "Mais vendidos",
+            products: cards.slice(5, 10),
+          },
+          {
+            id: "destaques",
+            title: "Destaques",
+            products: cards.slice(10, 15),
+          },
+        ]);
+      } catch {
+        setProductsError(
+          "Exibindo dados locais enquanto a API de produtos não responde.",
+        );
+        setProductSections(fallbackSections);
+      }
+    }
+
+    void loadCatalog();
+    return;
+
+    /* Legacy remote-placeholder loader retained temporarily below for reference.
     const controller = new AbortController();
 
     async function loadProducts() {
@@ -116,8 +268,39 @@ function App() {
     }
 
     loadProducts();
-    return () => controller.abort();
+    return () => controller.abort(); */
   }, []);
+
+  useEffect(() => {
+    if (!activeClient) {
+      setCartItems([]);
+      setAvailableCoupons([]);
+      setSelectedCouponIds([]);
+      return;
+    }
+
+    void Promise.all([
+      orderGateway.getCart(activeClient.id),
+      orderGateway.listCoupons(activeClient.id),
+    ])
+      .then(([cart, coupons]) => {
+        setCartItems(mapCart(cart));
+        setAvailableCoupons(
+          coupons.map((coupon) => ({
+            id: coupon.id,
+            code: coupon.code,
+            title:
+              coupon.type === "TROCA" ? "Cupom de troca" : "Cupom promocional",
+            discountLabel: formatCurrency(coupon.value),
+            description: coupon.description,
+            minimumSubtotal: 0,
+            type: coupon.type,
+            amount: coupon.value,
+          })),
+        );
+      })
+      .catch(() => undefined);
+  }, [activeClient?.id]);
 
   useEffect(() => {
     if (!selectedProduct && !isCouponModalOpen) {
@@ -161,6 +344,40 @@ function App() {
   }, [activeClient]);
 
   useEffect(() => {
+    if (!activeClient) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void customerGateway.getClientById(activeClient.id).catch((error) => {
+      if (
+        cancelled ||
+        !(error instanceof CustomerGatewayError) ||
+        error.status !== 404
+      ) {
+        return;
+      }
+
+      // O banco da API pode ter sido recriado enquanto a sessão permanecia
+      // salva no navegador. Não mantenha um UUID de cliente inexistente.
+      setActiveClient(null);
+      setProfileMode("login");
+      navigate("profile", "/login");
+      setToast({
+        variant: "error",
+        title: "Sessão desatualizada",
+        message:
+          "Seu cadastro não foi encontrado na API atual. Entre novamente ou crie sua conta.",
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClient?.id, customerGateway]);
+
+  useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [currentView]);
 
@@ -176,39 +393,20 @@ function App() {
     (total, item) => total + item.totalPriceValue,
     0,
   );
-  const baseShippingTotal = cartItems.some(
-    (item) => item.shipping !== "Frete grátis",
-  )
-    ? 24.9
-    : 0;
-
-  const couponDiscountTotal = availableCoupons.reduce((total, coupon) => {
-    if (
-      !selectedCouponIds.includes(coupon.id) ||
-      subtotal < coupon.minimumSubtotal
-    ) {
-      return total;
-    }
-
-    if (coupon.type === "percentage") {
-      return total + subtotal * (coupon.amount / 100);
-    }
-
-    if (coupon.type === "fixed") {
-      return total + coupon.amount;
-    }
-
-    return total;
-  }, 0);
-
-  const hasFreeShippingCoupon = availableCoupons.some(
-    (coupon) =>
-      selectedCouponIds.includes(coupon.id) &&
-      subtotal >= coupon.minimumSubtotal &&
-      coupon.type === "shipping",
-  );
-
-  const shippingTotal = hasFreeShippingCoupon ? 0 : baseShippingTotal;
+  const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const selectedDeliveryState = activeClient?.addresses.find((address) =>
+    address.roles.includes("Entrega"),
+  )?.state;
+  const baseShippingTotal =
+    cartItems.length === 0
+      ? 0
+      : 15 +
+        itemCount * 2 +
+        (selectedDeliveryState && selectedDeliveryState !== "SP" ? 10 : 0);
+  const couponDiscountTotal = availableCoupons
+    .filter((coupon) => selectedCouponIds.includes(coupon.id))
+    .reduce((total, coupon) => total + coupon.amount, 0);
+  const shippingTotal = baseShippingTotal;
   const finalTotal = Math.max(
     0,
     subtotal + shippingTotal - couponDiscountTotal,
@@ -226,33 +424,42 @@ function App() {
 
   function openProductPage() {
     if (selectedProduct) {
+      window.history.pushState(
+        { view: "product", productId: selectedProduct.id },
+        "",
+        `/produto/${productSlug(selectedProduct)}`,
+      );
       setCurrentView("product");
     }
   }
 
   function closeProductPage() {
     setSelectedProduct(null);
-    setCurrentView("home");
+    navigate("home");
   }
 
   function openHomePage() {
     closeProductModal();
     setIsCouponModalOpen(false);
-    setCurrentView("home");
+    navigate("home");
   }
 
   function openProfilePage() {
     closeProductModal();
     setIsCouponModalOpen(false);
-    if (!activeClient) setProfileMode("login");
-    setCurrentView("profile");
+    if (!activeClient) {
+      setProfileMode("login");
+      navigate("profile", "/login");
+      return;
+    }
+    navigate("profile");
   }
 
   function openAdminPage(section: AdminSection = "clients") {
     closeProductModal();
     setIsCouponModalOpen(false);
     setActiveAdminSection(section);
-    setCurrentView("admin");
+    navigate("admin");
   }
 
   function requireRegisteredProfile() {
@@ -276,7 +483,7 @@ function App() {
     }
 
     closeProductModal();
-    setCurrentView("cart");
+    navigate("cart");
   }
 
   function openCheckoutPage() {
@@ -295,7 +502,7 @@ function App() {
     }
 
     setIsCouponModalOpen(false);
-    setCurrentView("checkout");
+    navigate("checkout");
   }
 
   function handleToggleCoupon(couponId: string) {
@@ -305,67 +512,40 @@ function App() {
       return;
     }
 
-    setSelectedCouponIds((current) =>
-      current.includes(couponId)
-        ? current.filter((id) => id !== couponId)
-        : [...current, couponId],
-    );
+    setSelectedCouponIds((current) => {
+      if (current.includes(couponId))
+        return current.filter((id) => id !== couponId);
+      const alreadyHasPromotional = availableCoupons.some(
+        (item) => current.includes(item.id) && item.type === "PROMOCIONAL",
+      );
+      if (coupon.type === "PROMOCIONAL" && alreadyHasPromotional) {
+        setToast({
+          variant: "error",
+          title: "Cupom não aplicado",
+          message: "A compra permite apenas um cupom promocional.",
+        });
+        return current;
+      }
+      return [...current, couponId];
+    });
   }
 
-  function addProductToCart(
+  async function addProductToCart(
     product: ProductCard,
     quantityToAdd: number,
     size = selectedSize,
   ) {
-    const unitPriceValue = parseFormattedPrice(product.price);
-    const totalPriceValue = unitPriceValue * quantityToAdd;
-
-    setCartItems((currentItems) => {
-      const existingItem = currentItems.find(
-        (item) => item.id === product.id && item.size === size,
-      );
-
-      if (existingItem) {
-        return currentItems.map((item) => {
-          if (item.id !== product.id) {
-            return item;
-          }
-
-          const quantity = item.quantity + quantityToAdd;
-          const updatedTotal = item.unitPriceValue * quantity;
-
-          return {
-            ...item,
-            quantity,
-            totalPriceValue: updatedTotal,
-            totalPrice: updatedTotal.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }),
-          };
-        });
-      }
-
-      return [
-        ...currentItems,
-        {
-          ...product,
-          quantity: quantityToAdd,
-          size,
-          unitPriceValue,
-          totalPriceValue,
-          totalPrice: totalPriceValue.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
-        },
-      ];
-    });
-
-    return totalPriceValue;
+    if (!activeClient) return;
+    const cart = await orderGateway.addCartItem(
+      activeClient.id,
+      product.id,
+      size,
+      quantityToAdd,
+    );
+    setCartItems(mapCart(cart));
   }
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (!selectedProduct || !requireRegisteredProfile()) {
       return;
     }
@@ -379,7 +559,22 @@ function App() {
       return;
     }
 
-    const totalPriceValue = addProductToCart(selectedProduct, selectedQuantity);
+    const totalPriceValue =
+      selectedQuantity *
+      Number(selectedProduct.price.replace(/[^\d,]/g, "").replace(",", "."));
+    try {
+      await addProductToCart(selectedProduct, selectedQuantity);
+    } catch (error) {
+      setToast({
+        variant: "error",
+        title: "Carrinho não atualizado",
+        message:
+          error instanceof CustomerGatewayError
+            ? error.message
+            : "Não foi possível adicionar o produto.",
+      });
+      return;
+    }
 
     setToast({
       variant: "success",
@@ -394,7 +589,7 @@ function App() {
     });
   }
 
-  function handleBuyNow() {
+  async function handleBuyNow() {
     if (!selectedProduct || !requireRegisteredProfile()) {
       return;
     }
@@ -408,46 +603,142 @@ function App() {
       return;
     }
 
-    addProductToCart(selectedProduct, selectedQuantity);
+    try {
+      await addProductToCart(selectedProduct, selectedQuantity);
+    } catch (error) {
+      setToast({
+        variant: "error",
+        title: "Carrinho não atualizado",
+        message:
+          error instanceof CustomerGatewayError
+            ? error.message
+            : "Não foi possível adicionar o produto.",
+      });
+      return;
+    }
     closeProductModal();
     setIsCouponModalOpen(false);
-    setCurrentView("checkout");
+    navigate("checkout");
   }
 
-  function handleUpdateCartItemQuantity(itemId: number, nextQuantity: number) {
+  async function handleUpdateCartItemQuantity(
+    itemId: string,
+    nextQuantity: number,
+  ) {
     if (nextQuantity < 1) {
       handleRemoveCartItem(itemId);
       return;
     }
 
-    setCartItems((currentItems) =>
-      currentItems.map((item) => {
-        if (item.id !== itemId) {
-          return item;
-        }
-
-        const totalPriceValue = item.unitPriceValue * nextQuantity;
-
-        return {
-          ...item,
-          quantity: nextQuantity,
-          totalPriceValue,
-          totalPrice: totalPriceValue.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
-        };
-      }),
-    );
+    const item = cartItems.find((current) => current.cartItemId === itemId);
+    if (!activeClient || !item) return;
+    try {
+      const cart = await orderGateway.updateCartItem(
+        activeClient.id,
+        itemId,
+        item.id,
+        item.size,
+        nextQuantity,
+      );
+      setCartItems(mapCart(cart));
+    } catch (error) {
+      setToast({
+        variant: "error",
+        title: "Quantidade não atualizada",
+        message:
+          error instanceof CustomerGatewayError
+            ? error.message
+            : "Não foi possível atualizar o carrinho.",
+      });
+    }
   }
 
-  function handleRemoveCartItem(itemId: number) {
-    setCartItems((currentItems) =>
-      currentItems.filter((item) => item.id !== itemId),
-    );
+  async function handleRemoveCartItem(itemId: string) {
+    if (!activeClient) return;
+    try {
+      await orderGateway.removeCartItem(activeClient.id, itemId);
+      setCartItems((currentItems) =>
+        currentItems.filter((item) => item.cartItemId !== itemId),
+      );
+    } catch (error) {
+      setToast({
+        variant: "error",
+        title: "Item não removido",
+        message:
+          error instanceof CustomerGatewayError
+            ? error.message
+            : "Não foi possível remover o item.",
+      });
+    }
   }
 
-  function handleConfirmPurchase(cards: ClientCard[], address: ClientAddress) {
+  async function handleConfirmPurchase(
+    cards: ClientCard[],
+    address: ClientAddress,
+    cardPayments: CardPayment[],
+  ) {
+    if (!activeClient) return;
+    try {
+      const order = await orderGateway.createOrder(
+        activeClient.id,
+        address.id,
+        selectedCouponIds,
+        cardPayments,
+      );
+      const createdAt = new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(order.createdAt));
+      setOrders((current) => [
+        {
+          id: order.id,
+          number: `#${order.code.replace("PED-", "")}`,
+          createdAt,
+          status: "EM PROCESSAMENTO",
+          items: cartItems,
+          paymentCards: cards,
+          address,
+          subtotal: order.subtotal,
+          shippingTotal: order.shipping,
+          discountTotal: order.couponDiscount,
+          total: order.total,
+        },
+        ...current,
+      ]);
+      setCartItems([]);
+      setSelectedCouponIds([]);
+      const coupons = await orderGateway.listCoupons(activeClient.id);
+      setAvailableCoupons(
+        coupons.map((coupon) => ({
+          id: coupon.id,
+          code: coupon.code,
+          title:
+            coupon.type === "TROCA" ? "Cupom de troca" : "Cupom promocional",
+          discountLabel: formatCurrency(coupon.value),
+          description: coupon.description,
+          minimumSubtotal: 0,
+          type: coupon.type,
+          amount: coupon.value,
+        })),
+      );
+      setToast({
+        variant: "success",
+        title: "Pedido realizado",
+        message: `${order.code} foi registrado com status EM PROCESSAMENTO.`,
+      });
+      openHomePage();
+    } catch (error) {
+      setToast({
+        variant: "error",
+        title: "Compra não concluída",
+        message:
+          error instanceof CustomerGatewayError
+            ? error.message
+            : "Não foi possível concluir o pedido.",
+      });
+    }
+    return;
+
     if (cartItems.length === 0) {
       setToast({
         variant: "error",
@@ -576,11 +867,12 @@ function App() {
   function handleClientRegistered(client: ClientDetails) {
     setActiveClient(client);
     setProfileMode("login");
+    navigate("profile");
   }
 
   function handleClientAuthenticated(client: ClientDetails) {
     setActiveClient(client);
-    setCurrentView("profile");
+    navigate("profile");
   }
 
   function handleAdminClientChanged(client: ClientDetails) {
@@ -595,7 +887,7 @@ function App() {
   function handleLogout() {
     setActiveClient(null);
     setProfileMode("login");
-    setCurrentView("profile");
+    navigate("profile", "/login");
   }
 
   function handleAdminUpdateOrderStatus(orderId: string, nextStatus: string) {
@@ -623,17 +915,20 @@ function App() {
     (total, item) => total + item.quantity,
     0,
   );
+  const showStoreHeader = currentView !== "profile" || activeClient !== null;
 
   return (
     <div className="app-shell">
-      <StoreHeader
-        cartItemsCount={cartItemsCount}
-        isOverlay={currentView === "home"}
-        onHome={openHomePage}
-        onOpenCart={openCartPage}
-        onOpenAdmin={() => openAdminPage("clients")}
-        onOpenProfile={openProfilePage}
-      />
+      {showStoreHeader ? (
+        <StoreHeader
+          cartItemsCount={cartItemsCount}
+          isOverlay={currentView === "home"}
+          onHome={openHomePage}
+          onOpenCart={openCartPage}
+          onOpenAdmin={() => openAdminPage("clients")}
+          onOpenProfile={openProfilePage}
+        />
+      ) : null}
 
       <main className="store-main">
         {currentView === "home" ? (
@@ -712,13 +1007,19 @@ function App() {
           ) : profileMode === "register" ? (
             <ClientRegistrationPage
               onRegistered={handleClientRegistered}
-              onBackToLogin={() => setProfileMode("login")}
+              onBackToLogin={() => {
+                setProfileMode("login");
+                navigate("profile", "/login");
+              }}
               onShowToast={setToast}
             />
           ) : (
             <LoginPage
               onAuthenticated={handleClientAuthenticated}
-              onCreateAccount={() => setProfileMode("register")}
+              onCreateAccount={() => {
+                setProfileMode("register");
+                navigate("profile", "/cadastro");
+              }}
               onShowToast={setToast}
             />
           )
@@ -735,6 +1036,8 @@ function App() {
         ) : null}
       </main>
 
+      <StoreFooter compact={currentView !== "home"} />
+
       <ProductModal
         product={currentView === "product" ? null : selectedProduct}
         onClose={closeProductModal}
@@ -745,6 +1048,7 @@ function App() {
 
       <CouponModal
         isOpen={isCouponModalOpen}
+        coupons={availableCoupons}
         subtotal={subtotal}
         selectedCouponIds={selectedCouponIds}
         onClose={() => setIsCouponModalOpen(false)}

@@ -34,7 +34,10 @@
   background: transparent;
   color: #1d1d1b;
   cursor: pointer;
-  transition: transform 180ms ease, color 180ms ease, background-color 180ms ease;
+  transition:
+    transform 180ms ease,
+    color 180ms ease,
+    background-color 180ms ease;
   border-radius: 50%;
 }
 
@@ -80,7 +83,10 @@
   border: 1px solid rgba(17, 17, 17, 0.08);
   border-radius: 50%;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
-  transition: transform 180ms ease, background-color 180ms ease, color 180ms ease;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .product-modal-swiper .swiper-button-prev {
@@ -208,7 +214,7 @@
   -webkit-appearance: none;
 }
 
-.product-modal-quantity-input[type='number'] {
+.product-modal-quantity-input[type="number"] {
   -moz-appearance: textfield;
 }
 
@@ -226,7 +232,9 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
   border-radius: 5px;
 }
 
@@ -280,7 +288,6 @@
 .product-modal-action-primary {
   background: var(--color-accent);
   color: #ffffff;
-  ;
 }
 
 .product-modal-action-secondary:hover {
