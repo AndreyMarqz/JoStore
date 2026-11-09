@@ -14,6 +14,16 @@ export type ApiProduct = {
   price: number;
   imageUrl?: string;
   availableQuantity: number;
+  categoryId: string;
+  categoryName: string;
+};
+export type ApiProductCategory = { id: string; name: string };
+export type ApiSalesHistory = {
+  startDate: string;
+  endDate: string;
+  categories: ApiProductCategory[];
+  points: Array<{ month: string; values: Record<string, number> }>;
+  total: number;
 };
 export type ApiCartItem = {
   id: string;
@@ -119,6 +129,14 @@ export const orderGateway = {
   notifications: (id: string) => request<ApiNotification[]>(`/customers/${id}/notifications`),
   readNotification: (customerId: string, id: string) => request<void>(`/customers/${customerId}/notifications/${id}/read`, { method: "PATCH" }),
   listProducts: () => request<ApiProduct[]>("/products"),
+  listProductCategories: () => request<ApiProductCategory[]>("/product-categories"),
+  salesHistory: (startDate: string, endDate: string, categoryIds: string[]) => {
+    const query = new URLSearchParams({ startDate, endDate });
+    categoryIds.forEach((id) => query.append("categoryIds", id));
+    return request<ApiSalesHistory>(`/admin/sales-history?${query.toString()}`, {
+      headers: { "X-JoStore-Role": "ADMINISTRADOR" },
+    });
+  },
   getCart: (customerId: string) =>
     request<ApiCart>(`/customers/${customerId}/cart`),
   addCartItem: (

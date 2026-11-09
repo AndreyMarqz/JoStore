@@ -38,6 +38,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.UNPROCESSABLE_ENTITY, "BUSINESS_RULE_VIOLATION", exception.getMessage(), List.of());
     }
 
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<ApiErrorDto> handleForbidden(ForbiddenOperationException exception) {
+        return error(HttpStatus.FORBIDDEN, "FORBIDDEN", exception.getMessage(), List.of());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorDto> handleInvalidBody(MethodArgumentNotValidException exception) {
         List<ApiFieldErrorDto> fieldErrors = exception.getBindingResult().getFieldErrors().stream()

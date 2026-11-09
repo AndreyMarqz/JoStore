@@ -17,5 +17,9 @@
 import "./commands";
 import "./pedidos/session";
 beforeEach(() => {
-  if (/pedidos|vendas/.test(Cypress.spec.relative)) cy.task("resetSalesFixtures");
+  if (/pedidos|vendas|analise-vendas/.test(Cypress.spec.relative)) {
+    cy.task("resetSalesFixtures");
+    cy.request("POST", "http://localhost:8081/api/v1/e2e/clock/reset");
+  }
+  if (/analise-vendas/.test(Cypress.spec.relative)) cy.task("resetAnalyticsFixtures");
 });

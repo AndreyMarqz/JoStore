@@ -1,6 +1,6 @@
 import type { ApiCustomer } from "./session";
 
-const api = () => "http://localhost:8081/api/v1";
+const api = () => String(Cypress.expose("apiUrl") ?? "http://localhost:8081/api/v1");
 export type Product = { id: string; code: string; name: string; price: number; availableQuantity: number };
 
 export function productByCode(code: string): Cypress.Chainable<Product> {

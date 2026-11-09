@@ -4,6 +4,8 @@ import "./CouponModal.css";
 type CouponModalProps = {
   isOpen: boolean;
   coupons: Coupon[];
+  isLoading: boolean;
+  error: string;
   subtotal: number;
   purchaseTotal: number;
   selectedCouponIds: string[];
@@ -14,6 +16,8 @@ type CouponModalProps = {
 export function CouponModal({
   isOpen,
   coupons,
+  isLoading,
+  error,
   subtotal,
   purchaseTotal,
   selectedCouponIds,
@@ -57,8 +61,16 @@ export function CouponModal({
           Veja quais descontos podem ser usados na compra atual.
         </p>
 
-        <div className="coupon-list">
-          {coupons.map((coupon) => {
+        <div className="coupon-list" aria-live="polite">
+          {isLoading ? (
+            <p className="coupon-modal-state">Atualizando cupons disponíveis…</p>
+          ) : error ? (
+            <p className="coupon-modal-state coupon-modal-state-error">{error}</p>
+          ) : coupons.length === 0 ? (
+            <p className="coupon-modal-state">
+              Você não possui cupons disponíveis para esta compra.
+            </p>
+          ) : coupons.map((coupon) => {
             const canUse = subtotal >= coupon.minimumSubtotal;
             const isSelected = selectedCouponIds.includes(coupon.id);
             const blockedByPromotionalCoupon =

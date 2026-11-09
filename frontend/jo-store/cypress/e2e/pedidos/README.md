@@ -1,4 +1,4 @@
-# Testes E2E — Criação de pedido
+# Testes E2E — Gerenciamento de vendas eletrônicas
 
 Os testes desta pasta usam um banco isolado (`jostore_e2e`) e uma API Spring no perfil `e2e`.
 
@@ -18,7 +18,7 @@ mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=8081"
 Na pasta `frontend/jo-store`, execute os cenários. O Cypress iniciará um Vite isolado na porta `5174`, apontando para a API E2E:
 
 ```powershell
-npm run cy:pedidos
+npm run cy:vendas
 ```
 
-Para acompanhá-los visualmente, use `npm run cy:open`. As interações visíveis aguardam 800 ms para tornar a demonstração acompanhável.
+Para acompanhá-los visualmente, use `npm run cy:open`. O roteiro de demonstração usa pausas de 1,8 segundo entre interações para que o fluxo seja acompanhável.

@@ -22,13 +22,14 @@ export function browserCustomer(customer: ApiCustomer) {
 }
 
 export function openStoreAs(customer: ApiCustomer, path = "/") {
-  cy.intercept("GET", `http://localhost:8081/api/v1/customers/${customer.id}/cart`).as("loadE2eCart");
-  cy.intercept("GET", "http://localhost:8081/api/v1/products").as("loadE2eProducts");
+  const api = String(Cypress.expose("apiUrl") ?? "http://localhost:8081/api/v1");
+  cy.intercept("GET", `${api}/customers/${customer.id}/cart`).as("loadE2eCart");
+  cy.intercept("GET", `${api}/products`).as("loadE2eProducts");
   cy.visit(path, { onBeforeLoad(window) {
     window.localStorage.clear();
     window.localStorage.setItem("jostore.session.v1", JSON.stringify(browserCustomer(customer)));
   }});
   cy.wait("@loadE2eCart").its("response.statusCode").should("eq", 200);
   cy.wait("@loadE2eProducts").its("response.statusCode").should("eq", 200);
-  cy.wait(800);
+  cy.wait(Number(Cypress.expose("uiActionDelayMs") ?? 1800));
 }

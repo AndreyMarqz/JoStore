@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -23,7 +23,6 @@ import type {
   AdminSection,
   CartItem,
   Coupon,
-  Order,
   ProductCard,
   ProductSection,
   ClientAddress,
@@ -56,6 +55,7 @@ function mapProduct(product: ApiProduct, index = 0): ProductCard {
   return {
     id: product.id,
     name: product.name,
+    category: product.categoryName,
     description: product.description,
     price: formatCurrency(product.price),
     shipping: "Frete calculado no checkout",
@@ -80,6 +80,25 @@ function mapCartItem(item: ApiCartItem, index = 0): CartItem {
 
 function mapCart(cart: ApiCart): CartItem[] {
   return cart.items.map(mapCartItem);
+}
+
+function mapCoupon(coupon: {
+  id: string;
+  code: string;
+  type: "PROMOCIONAL" | "TROCA";
+  value: number;
+  description: string;
+}): Coupon {
+  return {
+    id: coupon.id,
+    code: coupon.code,
+    title: coupon.type === "TROCA" ? "Cupom de troca" : "Cupom promocional",
+    discountLabel: formatCurrency(coupon.value),
+    description: coupon.description,
+    minimumSubtotal: 0,
+    type: coupon.type,
+    amount: coupon.value,
+  };
 }
 
 function productSlug(product: ProductCard) {
@@ -141,7 +160,24 @@ function App() {
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [selectedCouponIds, setSelectedCouponIds] = useState<string[]>([]);
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
+  const [couponsError, setCouponsError] = useState("");
+
+  const refreshAvailableCoupons = useCallback(async (customerId: string) => {
+    setIsLoadingCoupons(true);
+    setCouponsError("");
+    try {
+      const coupons = await orderGateway.listCoupons(customerId);
+      setAvailableCoupons(coupons.map(mapCoupon));
+    } catch {
+      setAvailableCoupons([]);
+      setCouponsError(
+        "Não foi possível consultar os cupons agora. Tente novamente em instantes.",
+      );
+    } finally {
+      setIsLoadingCoupons(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!activeClient || !["cart", "checkout"].includes(currentView)) return;
@@ -301,31 +337,17 @@ function App() {
       setCartItems([]);
       setAvailableCoupons([]);
       setSelectedCouponIds([]);
+      setCouponsError("");
       return;
     }
 
-    void Promise.all([
-      orderGateway.getCart(activeClient.id),
-      orderGateway.listCoupons(activeClient.id),
-    ])
-      .then(([cart, coupons]) => {
+    void orderGateway.getCart(activeClient.id)
+      .then((cart) => {
         setCartItems(mapCart(cart));
-        setAvailableCoupons(
-          coupons.map((coupon) => ({
-            id: coupon.id,
-            code: coupon.code,
-            title:
-              coupon.type === "TROCA" ? "Cupom de troca" : "Cupom promocional",
-            discountLabel: formatCurrency(coupon.value),
-            description: coupon.description,
-            minimumSubtotal: 0,
-            type: coupon.type,
-            amount: coupon.value,
-          })),
-        );
       })
       .catch(() => undefined);
-  }, [activeClient?.id]);
+    void refreshAvailableCoupons(activeClient.id);
+  }, [activeClient?.id, refreshAvailableCoupons]);
 
   useEffect(() => {
     if (!selectedProduct && !isCouponModalOpen) {
@@ -489,6 +511,12 @@ function App() {
     closeProductModal();
     setIsCouponModalOpen(false);
     navigate("home");
+  }
+
+  function openCouponModal() {
+    if (!activeClient) return;
+    setIsCouponModalOpen(true);
+    void refreshAvailableCoupons(activeClient.id);
   }
 
   function openProfilePage() {
@@ -756,7 +784,7 @@ function App() {
   }
 
   async function handleConfirmPurchase(
-    cards: ClientCard[],
+    _cards: ClientCard[],
     address: ClientAddress,
     cardPayments: CardPayment[],
   ) {
@@ -770,44 +798,11 @@ function App() {
         selectedCouponIds,
         cardPayments,
       );
-      const createdAt = new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(new Date(order.createdAt));
-      setOrders((current) => [
-        {
-          id: order.id,
-          number: `#${order.code.replace("PED-", "")}`,
-          createdAt,
-          status: "EM PROCESSAMENTO",
-          items: cartItems,
-          paymentCards: cards,
-          address,
-          subtotal: order.subtotal,
-          shippingTotal: order.shipping,
-          discountTotal: order.couponDiscount,
-          total: order.total,
-        },
-        ...current,
-      ]);
       setCartItems([]);
       setSelectedCouponIds([]);
       setCheckoutQuote(null);
       // Uma falha ao atualizar a lista não desfaz um pedido já registrado.
-      const coupons = await orderGateway.listCoupons(activeClient.id).catch(() => []);
-      setAvailableCoupons(
-        coupons.map((coupon) => ({
-          id: coupon.id,
-          code: coupon.code,
-          title:
-            coupon.type === "TROCA" ? "Cupom de troca" : "Cupom promocional",
-          discountLabel: formatCurrency(coupon.value),
-          description: coupon.description,
-          minimumSubtotal: 0,
-          type: coupon.type,
-          amount: coupon.value,
-        })),
-      );
+      void refreshAvailableCoupons(activeClient.id);
       setToast({
         variant: "success",
         title: "Pedido realizado",
@@ -907,7 +902,7 @@ function App() {
             cartItems={cartItems}
             cartSnapshot={cartSnapshot}
             onBackToHome={openHomePage}
-            onOpenCoupons={() => setIsCouponModalOpen(true)}
+            onOpenCoupons={openCouponModal}
             onUpdateItemQuantity={handleUpdateCartItemQuantity}
             onRemoveItem={handleRemoveCartItem}
             subtotal={subtotal}
@@ -928,7 +923,7 @@ function App() {
             couponDiscountTotal={checkoutQuote?.couponDiscount ?? couponDiscountTotal}
             finalTotal={checkoutQuote?.total ?? finalTotal}
             onBackToCart={openCartPage}
-            onOpenCoupons={() => setIsCouponModalOpen(true)}
+            onOpenCoupons={openCouponModal}
             onClientChanged={(client) =>
               setActiveClient((current) =>
                 current?.id === client.id ? client : current,
@@ -972,7 +967,6 @@ function App() {
 
         {currentView === "admin" ? (
           <AdminPage
-            orders={orders}
             activeSection={activeAdminSection}
             onSelectSection={setActiveAdminSection}
             onClientChanged={handleAdminClientChanged}
@@ -993,6 +987,8 @@ function App() {
       <CouponModal
         isOpen={isCouponModalOpen}
         coupons={availableCoupons}
+        isLoading={isLoadingCoupons}
+        error={couponsError}
         subtotal={subtotal}
         purchaseTotal={couponPurchaseTotal}
         selectedCouponIds={selectedCouponIds}

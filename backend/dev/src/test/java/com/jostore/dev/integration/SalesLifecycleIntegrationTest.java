@@ -2,6 +2,7 @@ package com.jostore.dev.integration;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.*;
@@ -102,12 +103,18 @@ class SalesLifecycleIntegrationTest {
         }
         assertThat(stock()).isEqualTo(1);
     }
-    @Test void expirationReleasesAllSizesAndWarnsBeforehand() throws Exception {
+    @Test void expirationReleasesOnlyTheExpiredProductAndAllItsSizes() throws Exception {
         UUID cid=id(customer(),"$.id");add(cid,1);
         orders.addItem(cid,new CartItemRequestDto(product,"G",2));
+        UUID otherProduct=jdbc.queryForObject("SELECT pro_id FROM produtos WHERE pro_codigo='ROP-000004'",UUID.class);
+        orders.addItem(cid,new CartItemRequestDto(otherProduct,"M",1));
+        UUID cart=orders.getCart(cid).id();
+        jdbc.update("UPDATE reservas_estoque SET expires_at=? WHERE cart_id=? AND product_id=?",Timestamp.from(clock.now().plusSeconds(1200)),cart,otherProduct);
         clock.advance(301);assertThat(orders.getCart(cid).expirationWarning()).isTrue();
         clock.advance(300);lifecycle.expireCarts();
-        var cart=orders.getCart(cid);assertThat(cart.items()).isEmpty();assertThat(cart.removedItems()).hasSize(2);
+        var response=orders.getCart(cid);assertThat(response.items()).hasSize(1);
+        assertThat(response.items().getFirst().product().id()).isEqualTo(otherProduct);
+        assertThat(response.removedItems()).hasSize(2);
         assertThat(stock()).isEqualTo(30);
     }
     @Test void stockCorrectionSurvivesCheckoutValidationError() throws Exception {
@@ -138,5 +145,25 @@ class SalesLifecycleIntegrationTest {
         UUID cid=id(customer(),"$.id");getJson("/customers/"+cid+"/orders");
         long start=System.nanoTime();getJson("/customers/"+cid+"/orders");
         assertThat(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-start)).isLessThan(1000);
+    }
+    @Test void salesHistoryIncludesOnlyDeliveredOrdersAndRequiresAdministrator() throws Exception {
+        String first=customer(); UUID firstId=id(first,"$.id"), address=id(first,"$.addresses[0].id");
+        UUID card=id(card(firstId,"4111111111111111"),"$.cards[0].id");
+        UUID delivered=buy(firstId,address,card,2); lifecycle.process(delivered);
+        lifecycle.transition(delivered,true); lifecycle.transition(delivered,false);
+        String second=customer(); UUID secondId=id(second,"$.id"), secondAddress=id(second,"$.addresses[0].id");
+        UUID secondCard=id(card(secondId,"4111111111111111"),"$.cards[0].id");
+        UUID notDelivered=buy(secondId,secondAddress,secondCard,1); lifecycle.process(notDelivered);
+        UUID category=jdbc.queryForObject("SELECT pro_cat_id FROM produtos WHERE pro_id=?",UUID.class,product);
+        String date=clock.now().atZone(java.time.ZoneId.of("America/Sao_Paulo")).toLocalDate().toString();
+        String path="/api/v1/admin/sales-history?startDate="+date+"&endDate="+date+"&categoryIds="+category;
+        var forbidden=mvc.perform(get(path)).andReturn();
+        assertThat(forbidden.getResponse().getStatus()).isEqualTo(403);
+        long start=System.nanoTime();
+        var allowed=mvc.perform(get(path).header("X-JoStore-Role","ADMINISTRADOR")).andReturn();
+        assertThat(allowed.getResponse().getStatus()).as(allowed.getResponse().getContentAsString()).isEqualTo(200);
+        assertThat(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-start)).isLessThan(1000);
+        assertThat(new java.math.BigDecimal(JsonPath.read(allowed.getResponse().getContentAsString(),"$.total").toString()))
+            .isEqualByComparingTo("199.80");
     }
 }

@@ -31,6 +31,7 @@ public class ProductService {
                 .map(inventory -> inventory.getAvailableQuantity())
                 .orElse(0);
         return new ProductResponseDto(product.getId(), product.getCode(), product.getName(),
-                product.getDescription(), product.getPrice(), product.getImageUrl(), availableQuantity);
+                product.getDescription(), product.getPrice(), product.getImageUrl(), availableQuantity,
+                product.getCategory().getId(), product.getCategory().getName());
     }
 }

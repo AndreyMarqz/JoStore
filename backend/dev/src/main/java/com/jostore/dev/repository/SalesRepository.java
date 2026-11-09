@@ -31,12 +31,16 @@ public class SalesRepository {
     public void releaseOrder(UUID orderId) { jdbc.update("DELETE FROM reservas_estoque WHERE order_id=?",orderId); }
     public List<Map<String,Object>> removed(UUID cartId) { return jdbc.queryForList("SELECT id, product_id AS \"productId\",name,size,quantity,reason FROM itens_carrinho_removidos WHERE cart_id=? ORDER BY removed_at",cartId); }
     public void expire(Instant now) {
-        var carts=jdbc.queryForList("SELECT DISTINCT cart_id FROM reservas_estoque WHERE cart_id IS NOT NULL AND expires_at<=?",UUID.class,Timestamp.from(now));
-        for(UUID cart:carts) {
-            jdbc.update("INSERT INTO itens_carrinho_removidos SELECT gen_random_uuid(),i.ica_car_id,i.ica_pro_id,p.pro_nome,i.ica_tamanho,i.ica_quantidade,?,? FROM itens_carrinho i JOIN produtos p ON p.pro_id=i.ica_pro_id WHERE i.ica_car_id=?", "Prazo de bloqueio expirado. Adicione o produto novamente para comprar.",Timestamp.from(now),cart);
-            jdbc.update("DELETE FROM itens_carrinho WHERE ica_car_id=?",cart);
-            jdbc.update("DELETE FROM reservas_estoque WHERE cart_id=?",cart);
-            audit(null,"EXPIRE","CARRINHO","Reservas liberadas e itens removidos do carrinho " + cart,now);
+        var expiredReservations=jdbc.queryForList("SELECT cart_id,product_id FROM reservas_estoque WHERE cart_id IS NOT NULL AND expires_at<=?",Timestamp.from(now));
+        for(var reservation:expiredReservations) {
+            UUID cart=(UUID) reservation.get("cart_id");
+            UUID product=(UUID) reservation.get("product_id");
+            // RN0045: a expiraÃ§Ã£o libera todas as variaÃ§Ãµes (tamanhos) do mesmo produto,
+            // sem remover produtos diferentes que ainda estejam reservados no carrinho.
+            jdbc.update("INSERT INTO itens_carrinho_removidos SELECT gen_random_uuid(),i.ica_car_id,i.ica_pro_id,p.pro_nome,i.ica_tamanho,i.ica_quantidade,?,? FROM itens_carrinho i JOIN produtos p ON p.pro_id=i.ica_pro_id WHERE i.ica_car_id=? AND i.ica_pro_id=?", "Prazo de bloqueio expirado. Adicione o produto novamente para comprar.",Timestamp.from(now),cart,product);
+            jdbc.update("DELETE FROM itens_carrinho WHERE ica_car_id=? AND ica_pro_id=?",cart,product);
+            jdbc.update("DELETE FROM reservas_estoque WHERE cart_id=? AND product_id=?",cart,product);
+            audit(null,"EXPIRE","CARRINHO","Reserva liberada e itens do produto " + product + " removidos do carrinho " + cart,now);
         }
     }
     public void history(UUID order, String previous, String status, String actor, String description, Instant now) {

@@ -8,19 +8,16 @@ import type {
   ClientDetails,
   ClientFilter,
   ClientSummary,
-  Order,
 } from "../../types/store";
 import "./AdminPage.css";
 
 type AdminPageProps = {
-  orders: Order[];
   activeSection: AdminSection;
   onSelectSection: (section: AdminSection) => void;
   onClientChanged: (client: ClientDetails) => void;
 };
 
 export function AdminPage({
-  orders,
   activeSection,
   onSelectSection,
   onClientChanged,
@@ -313,7 +310,7 @@ export function AdminPage({
                   Gráfico de análise
                 </h2>
               </div>
-              <AdminAnalytics orders={orders} />
+              <AdminAnalytics />
             </section>
           ) : null}
         </div>

@@ -6,7 +6,7 @@ import {
 } from "../pedidos/fixtures";
 import { openStoreAs, type ApiCustomer } from "../pedidos/session";
 import type { ApiOrder } from "../../../src/services/orderGateway";
-export const api = "http://localhost:8081/api/v1";
+export const api = String(Cypress.expose("apiUrl") ?? "http://localhost:8081/api/v1");
 export type Sale = {
   customer: ApiCustomer;
   productId: string;

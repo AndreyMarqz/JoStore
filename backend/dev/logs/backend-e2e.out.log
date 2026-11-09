@@ -1,0 +1,172 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.jostore:dev >---------------------------
+[INFO] Building  0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.1.1:run (default-cli) > test-compile @ dev >>>
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ dev ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 12 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ dev ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ dev ---
+[INFO] skip non existing resourceDirectory C:\Projetos\JoStore - Projeto\JoStore\backend\dev\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ dev ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:4.1.1:run (default-cli) < test-compile @ dev <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.1.1:run (default-cli) @ dev ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.1)
+
+2026-11-08T23:59:44.273-03:00  INFO 22508 --- [dev] [           main] com.jostore.dev.DevApplication           : Starting DevApplication using Java 21.0.10 with PID 22508 (C:\Projetos\JoStore - Projeto\JoStore\backend\dev\target\classes started by Andrey Marques in C:\Projetos\JoStore - Projeto\JoStore\backend\dev)
+2026-11-08T23:59:44.277-03:00  INFO 22508 --- [dev] [           main] com.jostore.dev.DevApplication           : The following 1 profile is active: "e2e"
+2026-11-08T23:59:45.119-03:00  INFO 22508 --- [dev] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-08T23:59:45.246-03:00  INFO 22508 --- [dev] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 116 ms. Found 12 JPA repository interfaces.
+2026-11-08T23:59:46.653-03:00  INFO 22508 --- [dev] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
+2026-11-08T23:59:46.689-03:00  INFO 22508 --- [dev] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-08T23:59:46.689-03:00  INFO 22508 --- [dev] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-11-08T23:59:46.881-03:00  INFO 22508 --- [dev] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2538 ms
+2026-11-08T23:59:47.547-03:00  INFO 22508 --- [dev] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-08T23:59:47.916-03:00  INFO 22508 --- [dev] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@24a04257
+2026-11-08T23:59:47.919-03:00  INFO 22508 --- [dev] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-08T23:59:47.970-03:00  INFO 22508 --- [dev] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:5433/jostore_e2e (PostgreSQL 18.6)
+2026-11-08T23:59:48.198-03:00  INFO 22508 --- [dev] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 10 migrations (execution time 00:00.085s)
+2026-11-08T23:59:48.239-03:00  INFO 22508 --- [dev] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 10
+2026-11-08T23:59:48.246-03:00  INFO 22508 --- [dev] [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-11-08T23:59:48.509-03:00  INFO 22508 --- [dev] [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-11-08T23:59:48.797-03:00  INFO 22508 --- [dev] [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.4.5.Final
+2026-11-08T23:59:50.060-03:00  INFO 22508 --- [dev] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-08T23:59:50.384-03:00  INFO 22508 --- [dev] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:postgresql://localhost:5433/jostore_e2e]
+	Database driver: PostgreSQL JDBC Driver
+	Database dialect: PostgreSQLDialect
+	Database version: 18.6
+	Default catalog/schema: jostore_e2e/public
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-08T23:59:54.002-03:00  INFO 22508 --- [dev] [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-08T23:59:54.183-03:00  INFO 22508 --- [dev] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-08T23:59:54.406-03:00  INFO 22508 --- [dev] [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-11-08T23:59:55.413-03:00  WARN 22508 --- [dev] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'addressLookupController' defined in file [C:\Projetos\JoStore - Projeto\JoStore\backend\dev\target\classes\com\jostore\dev\controller\AddressLookupController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'addressLookupService' defined in file [C:\Projetos\JoStore - Projeto\JoStore\backend\dev\target\classes\com\jostore\dev\service\AddressLookupService.class]: Failed to instantiate [com.jostore.dev.service.AddressLookupService]: Constructor threw exception
+2026-11-08T23:59:55.416-03:00  INFO 22508 --- [dev] [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-11-08T23:59:55.420-03:00  INFO 22508 --- [dev] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-08T23:59:55.426-03:00  INFO 22508 --- [dev] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-11-08T23:59:55.437-03:00  INFO 22508 --- [dev] [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-11-08T23:59:55.471-03:00  INFO 22508 --- [dev] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-11-08T23:59:55.507-03:00 ERROR 22508 --- [dev] [           main] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'addressLookupController' defined in file [C:\Projetos\JoStore - Projeto\JoStore\backend\dev\target\classes\com\jostore\dev\controller\AddressLookupController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'addressLookupService' defined in file [C:\Projetos\JoStore - Projeto\JoStore\backend\dev\target\classes\com\jostore\dev\service\AddressLookupService.class]: Failed to instantiate [com.jostore.dev.service.AddressLookupService]: Constructor threw exception
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:240) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1380) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1219) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:565) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:525) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:333) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:371) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:331) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:196) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.instantiateSingleton(DefaultListableBeanFactory.java:1225) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingleton(DefaultListableBeanFactory.java:1191) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:1121) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:994) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:621) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:143) ~[spring-boot-web-server-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:756) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:445) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:321) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1365) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354) ~[spring-boot-4.1.1.jar:4.1.1]
+	at com.jostore.dev.DevApplication.main(DevApplication.java:12) ~[classes/:na]
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'addressLookupService' defined in file [C:\Projetos\JoStore - Projeto\JoStore\backend\dev\target\classes\com\jostore\dev\service\AddressLookupService.class]: Failed to instantiate [com.jostore.dev.service.AddressLookupService]: Constructor threw exception
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateBean(AbstractAutowireCapableBeanFactory.java:1342) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1229) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:565) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:525) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:333) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:371) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:331) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:201) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveBean(DefaultListableBeanFactory.java:1232) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1711) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1658) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:912) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791) ~[spring-beans-7.0.9.jar:7.0.9]
+	... 21 common frames omitted
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [com.jostore.dev.service.AddressLookupService]: Constructor threw exception
+	at org.springframework.beans.BeanUtils.instantiateClass(BeanUtils.java:220) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:106) ~[spring-beans-7.0.9.jar:7.0.9]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateBean(AbstractAutowireCapableBeanFactory.java:1336) ~[spring-beans-7.0.9.jar:7.0.9]
+	... 33 common frames omitted
+Caused by: java.io.UncheckedIOException: java.io.IOException: Unable to establish loopback connection
+	at java.net.http/jdk.internal.net.http.HttpClientImpl.<init>(HttpClientImpl.java:508) ~[java.net.http:na]
+	at java.net.http/jdk.internal.net.http.HttpClientImpl.create(HttpClientImpl.java:436) ~[java.net.http:na]
+	at java.net.http/jdk.internal.net.http.HttpClientBuilderImpl.build(HttpClientBuilderImpl.java:143) ~[java.net.http:na]
+	at java.net.http/java.net.http.HttpClient.newHttpClient(HttpClient.java:195) ~[java.net.http:na]
+	at org.springframework.http.client.JdkClientHttpRequestFactory.<init>(JdkClientHttpRequestFactory.java:54) ~[spring-web-7.0.9.jar:7.0.9]
+	at org.springframework.web.client.DefaultRestClientBuilder.initRequestFactory(DefaultRestClientBuilder.java:459) ~[spring-web-7.0.9.jar:7.0.9]
+	at org.springframework.web.client.DefaultRestClientBuilder.build(DefaultRestClientBuilder.java:429) ~[spring-web-7.0.9.jar:7.0.9]
+	at org.springframework.web.client.RestClient.create(RestClient.java:160) ~[spring-web-7.0.9.jar:7.0.9]
+	at com.jostore.dev.service.AddressLookupService.<init>(AddressLookupService.java:16) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486) ~[na:na]
+	at org.springframework.beans.BeanUtils.instantiateClass(BeanUtils.java:194) ~[spring-beans-7.0.9.jar:7.0.9]
+	... 35 common frames omitted
+Caused by: java.io.IOException: Unable to establish loopback connection
+	at java.base/sun.nio.ch.PipeImpl$Initializer.run(PipeImpl.java:103) ~[na:na]
+	at java.base/sun.nio.ch.PipeImpl$Initializer.run(PipeImpl.java:67) ~[na:na]
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:571) ~[na:na]
+	at java.base/sun.nio.ch.PipeImpl.<init>(PipeImpl.java:197) ~[na:na]
+	at java.base/sun.nio.ch.WEPollSelectorImpl.<init>(WEPollSelectorImpl.java:79) ~[na:na]
+	at java.base/sun.nio.ch.WEPollSelectorProvider.openSelector(WEPollSelectorProvider.java:33) ~[na:na]
+	at java.base/java.nio.channels.Selector.open(Selector.java:295) ~[na:na]
+	at java.net.http/jdk.internal.net.http.HttpClientImpl$SelectorManager.<init>(HttpClientImpl.java:1132) ~[java.net.http:na]
+	at java.net.http/jdk.internal.net.http.HttpClientImpl.<init>(HttpClientImpl.java:505) ~[java.net.http:na]
+	... 47 common frames omitted
+Caused by: java.net.SocketException: Invalid argument: connect
+	at java.base/sun.nio.ch.UnixDomainSockets.connect0(Native Method) ~[na:na]
+	at java.base/sun.nio.ch.UnixDomainSockets.connect(UnixDomainSockets.java:154) ~[na:na]
+	at java.base/sun.nio.ch.UnixDomainSockets.connect(UnixDomainSockets.java:150) ~[na:na]
+	at java.base/sun.nio.ch.SocketChannelImpl.connect(SocketChannelImpl.java:878) ~[na:na]
+	at java.base/java.nio.channels.SocketChannel.open(SocketChannel.java:285) ~[na:na]
+	at java.base/sun.nio.ch.PipeImpl$Initializer$LoopbackConnector.run(PipeImpl.java:132) ~[na:na]
+	at java.base/sun.nio.ch.PipeImpl$Initializer.run(PipeImpl.java:85) ~[na:na]
+	... 55 common frames omitted
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  19.612 s
+[INFO] Finished at: 2026-11-08T23:59:55-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.1:run (default-cli) on project dev: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

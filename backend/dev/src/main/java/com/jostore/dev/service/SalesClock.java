@@ -13,4 +13,8 @@ public class SalesClock {
         if (seconds < 0 || seconds > 86400) throw new IllegalArgumentException("Avanço de tempo inválido.");
         offset.addAndGet(seconds);
     }
+
+    public void reset() {
+        offset.set(0);
+    }
 }

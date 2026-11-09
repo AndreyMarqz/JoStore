@@ -387,7 +387,8 @@ public class OrderService {
         Product product = item.getProduct();
         int stock = inventoryRepository.findByProductId(product.getId()).map(Inventory::getAvailableQuantity).orElse(0);
         ProductResponseDto response = new ProductResponseDto(product.getId(), product.getCode(), product.getName(),
-                product.getDescription(), product.getPrice(), product.getImageUrl(), stock);
+                product.getDescription(), product.getPrice(), product.getImageUrl(), stock,
+                product.getCategory().getId(), product.getCategory().getName());
         return new CartItemResponseDto(item.getId(), response, item.getSize(), item.getQuantity(), product.getPrice(),
                 money(itemTotal(item)));
     }
@@ -409,7 +410,8 @@ public class OrderService {
     public OrderResponseDto toOrderResponse(PurchaseOrder order, Coupon generatedCoupon) {
         List<CartItemResponseDto> items = order.getItems().stream().map(item -> new CartItemResponseDto(item.getId(),
                 new ProductResponseDto(item.getProduct().getId(), item.getProductCode(), item.getProductName(),
-                        item.getProduct().getDescription(), item.getUnitPrice(), item.getProduct().getImageUrl(), 0),
+                        item.getProduct().getDescription(), item.getUnitPrice(), item.getProduct().getImageUrl(), 0,
+                        item.getProduct().getCategory().getId(), item.getProduct().getCategory().getName()),
                 item.getSize(), item.getQuantity(), item.getUnitPrice(), item.getTotal())).toList();
         List<OrderPaymentResponseDto> payments = order.getPayments().stream()
                 .map(payment -> new OrderPaymentResponseDto(payment.getCard().getId(),

@@ -123,7 +123,8 @@ public class SalesLifecycleService {
         UUID id=UUID.randomUUID();
         sales.jdbc().update("INSERT INTO trocas(id,order_id,customer_id,status,full_order,created_at) VALUES (?,?,?,'EM_TROCA',?,?)",id,orderId,customer,full,Timestamp.from(clock.now()));
         for(var item:request.items()) sales.jdbc().update("INSERT INTO itens_troca(id,exchange_id,order_item_id,quantity) VALUES (?,?,?,?)",UUID.randomUUID(),id,item.orderItemId(),item.quantity());
-        if(full) change(o,OrderStatusEnum.ENTREGUE,OrderStatusEnum.EM_TROCA,"CLIENTE:"+customer,"Troca integral solicitada.");
+        change(o,OrderStatusEnum.ENTREGUE,OrderStatusEnum.EM_TROCA,"CLIENTE:"+customer,
+            full ? "Troca integral solicitada." : "Troca parcial solicitada.");
         sales.audit(customer,"INSERT","TROCA","Troca "+id+" pedido "+orderId+" itens "+request.items(),clock.now());
         return exchange(id);
     }
@@ -145,7 +146,7 @@ public class SalesLifecycleService {
         if(!"EM_TROCA".equals(ex.get("status"))) throw new BusinessRuleException("Somente trocas EM TROCA podem ser autorizadas.");
         sales.jdbc().update("UPDATE trocas SET status='TROCA_AUTORIZADA',authorized_at=? WHERE id=?",Timestamp.from(clock.now()),id);
         sales.jdbc().update("INSERT INTO notificacoes(id,customer_id,exchange_id,message,created_at) VALUES (?,?,?,?,?)",UUID.randomUUID(),ex.get("customerId"),id,"A troca do pedido "+ex.get("orderCode")+" foi autorizada. Envie os itens para devolução.",Timestamp.from(clock.now()));
-        if(Boolean.TRUE.equals(ex.get("fullOrder"))) change(order((UUID)ex.get("orderId")),OrderStatusEnum.EM_TROCA,OrderStatusEnum.TROCA_AUTORIZADA,"ADMINISTRADOR","Troca autorizada.");
+        change(order((UUID)ex.get("orderId")),OrderStatusEnum.EM_TROCA,OrderStatusEnum.TROCA_AUTORIZADA,"ADMINISTRADOR","Troca autorizada.");
         sales.audit(null,"UPDATE","TROCA","ADMINISTRADOR autorizou "+id+"; notificação enviada ao cliente "+ex.get("customerId"),clock.now());
         return exchange(id);
     }
@@ -170,7 +171,7 @@ public class SalesLifecycleService {
         var o=order((UUID)ex.get("orderId"));
         Coupon coupon=issueCoupon(o,value,"Recebimento da troca do pedido "+o.getCode());
         sales.jdbc().update("UPDATE trocas SET status='TROCADO',received_at=?,coupon_id=? WHERE id=?",Timestamp.from(clock.now()),coupon.getId(),id);
-        if(Boolean.TRUE.equals(ex.get("fullOrder"))) change(o,OrderStatusEnum.TROCA_AUTORIZADA,OrderStatusEnum.TROCADO,"ADMINISTRADOR","Recebimento da troca confirmado.");
+        change(o,OrderStatusEnum.TROCA_AUTORIZADA,OrderStatusEnum.TROCADO,"ADMINISTRADOR","Recebimento da troca confirmado.");
         sales.audit(null,"UPDATE","TROCA","ADMINISTRADOR recebeu "+id+"; decisões "+request.items()+"; cupom "+coupon.getCode(),clock.now());
         return exchange(id);
     }
