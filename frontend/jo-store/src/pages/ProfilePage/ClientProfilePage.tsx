@@ -9,7 +9,6 @@ import type {
   ClientDetails,
   ClientPasswordUpdateInput,
   ClientUpdateInput,
-  Order,
   ToastState,
 } from "../../types/store";
 import {
@@ -19,15 +18,12 @@ import {
   streetTypes,
 } from "../../utils/addressOptions";
 import "./ProfilePage.css";
+import { SalesPanel } from "../../components/SalesPanel/SalesPanel";
 
 type Props = {
   client: ClientDetails;
-  orders: Order[];
   onClientChanged: (client: ClientDetails) => void;
   onLogout: () => void;
-  onCancelOrder: (id: string) => void;
-  onConfirmOrderReceived: (id: string) => void;
-  onRequestOrderExchange: (id: string) => void;
   onShowToast: (toast: Exclude<ToastState, null>) => void;
 };
 
@@ -80,12 +76,8 @@ function errorMessage(error: unknown) {
 
 export function ClientProfilePage({
   client,
-  orders,
   onClientChanged,
   onLogout,
-  onCancelOrder,
-  onConfirmOrderReceived,
-  onRequestOrderExchange,
   onShowToast,
 }: Props) {
   const gateway = useCustomerGateway();
@@ -1069,67 +1061,7 @@ export function ClientProfilePage({
             className="profile-panel"
             aria-labelledby="client-orders-title"
           >
-            <div className="profile-panel-header">
-              <h2 id="client-orders-title" className="profile-panel-title">
-                Meus pedidos
-              </h2>
-              <span className="profile-panel-meta">
-                {orders.length} pedido(s)
-              </span>
-            </div>
-            {orders.length ? (
-              <div className="orders-list">
-                {orders.map((order) => (
-                  <article key={order.id} className="order-card">
-                    <div className="order-card-header">
-                      <div>
-                        <strong className="order-card-number">
-                          Pedido {order.number}
-                        </strong>
-                        <p className="order-card-date">{order.createdAt}</p>
-                      </div>
-                      <span className="order-card-status">{order.status}</span>
-                    </div>
-                    <div className="order-card-actions">
-                      {["EM ABERTO", "EM PROCESSAMENTO"].includes(
-                        order.status,
-                      ) ? (
-                        <button
-                          type="button"
-                          className="order-card-action order-card-action-secondary"
-                          onClick={() => onCancelOrder(order.id)}
-                        >
-                          Cancelar pedido
-                        </button>
-                      ) : null}
-                      {["ENTREGUE", "ITEM ENVIADO"].includes(order.status) ? (
-                        <button
-                          type="button"
-                          className="order-card-action order-card-action-primary"
-                          onClick={() => onConfirmOrderReceived(order.id)}
-                        >
-                          Confirmar recebimento
-                        </button>
-                      ) : null}
-                      {order.status === "PEDIDO RECEBIDO" ? (
-                        <button
-                          type="button"
-                          className="order-card-action order-card-action-secondary"
-                          onClick={() => onRequestOrderExchange(order.id)}
-                        >
-                          Solicitar troca
-                        </button>
-                      ) : null}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="profile-empty-state">
-                <h3>Nenhum pedido realizado</h3>
-                <p>Quando existirem transações, elas aparecerão aqui.</p>
-              </div>
-            )}
+            <SalesPanel customerId={client.id} />
           </section>
         </div>
       </div>

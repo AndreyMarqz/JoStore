@@ -33,9 +33,15 @@ body,
   min-height: 100%;
 }
 
+html {
+  /* Evita que páginas curtas mudem de posição quando a barra vertical some. */
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   background: var(--color-base);
+  overflow-y: scroll;
   overflow-x: hidden;
 }
 

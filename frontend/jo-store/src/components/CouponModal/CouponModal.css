@@ -70,6 +70,19 @@
   background: #ffffff;
 }
 
+.coupon-card.is-disabled {
+  opacity: 0.42;
+  background: rgba(29, 29, 27, 0.035);
+}
+
+.coupon-card.is-disabled .coupon-select {
+  cursor: not-allowed;
+}
+
+.coupon-card.is-disabled .coupon-select input {
+  cursor: not-allowed;
+}
+
 .coupon-card-head {
   display: flex;
   align-items: flex-start;

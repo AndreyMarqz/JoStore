@@ -24,7 +24,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest
+@SpringBootTest(properties="jostore.sales.scheduler-enabled=false")
 @Testcontainers
 class CustomerCrudIntegrationTest {
 

@@ -15,3 +15,7 @@
 
 // Import commands.js using ES2015 syntax:
 import "./commands";
+import "./pedidos/session";
+beforeEach(() => {
+  if (/pedidos|vendas/.test(Cypress.spec.relative)) cy.task("resetSalesFixtures");
+});

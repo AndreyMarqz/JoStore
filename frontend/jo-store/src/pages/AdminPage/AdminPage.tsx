@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { adminOrderStatusTransitions } from "../../data/storeData";
+import { SalesPanel } from "../../components/SalesPanel/SalesPanel";
 import { AdminAnalytics } from "./AdminAnalytics";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
@@ -10,14 +10,12 @@ import type {
   ClientSummary,
   Order,
 } from "../../types/store";
-import { normalizeOrderStatus } from "../../utils/store";
 import "./AdminPage.css";
 
 type AdminPageProps = {
   orders: Order[];
   activeSection: AdminSection;
   onSelectSection: (section: AdminSection) => void;
-  onUpdateOrderStatus: (orderId: string, nextStatus: string) => void;
   onClientChanged: (client: ClientDetails) => void;
 };
 
@@ -25,13 +23,15 @@ export function AdminPage({
   orders,
   activeSection,
   onSelectSection,
-  onUpdateOrderStatus,
   onClientChanged,
 }: AdminPageProps) {
   const gateway = useCustomerGateway();
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [filter, setFilter] = useState<ClientFilter>({});
   const [clientsError, setClientsError] = useState("");
+  const hasSelectedFilters = Object.values(filter).some(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  );
 
   async function loadClients(nextFilter = filter) {
     try {
@@ -279,10 +279,15 @@ export function AdminPage({
                 </div>
               ) : (
                 <div className="profile-empty-state">
-                  <h3>Nenhum cliente cadastrado</h3>
+                  <h3>
+                    {hasSelectedFilters
+                      ? "Nenhum cliente encontrado"
+                      : "Nenhum cliente cadastrado"}
+                  </h3>
                   <p>
-                    Assim que um cliente concluir o cadastro, ele aparecerá
-                    aqui.
+                    {hasSelectedFilters
+                      ? "Não há clientes que correspondam aos filtros selecionados. Revise os critérios da consulta ou limpe os filtros para visualizar todos os clientes."
+                      : "Assim que um cliente concluir o cadastro, ele aparecerá aqui."}
                   </p>
                 </div>
               )}
@@ -294,88 +299,7 @@ export function AdminPage({
               className="profile-panel"
               aria-labelledby="admin-orders-title"
             >
-              <div className="profile-panel-header">
-                <h2 id="admin-orders-title" className="profile-panel-title">
-                  Pedidos
-                </h2>
-                <span className="profile-panel-meta">
-                  {orders.length} pedido(s)
-                </span>
-              </div>
-
-              {orders.length > 0 ? (
-                <div className="orders-list">
-                  {orders.map((order) => {
-                    const nextStatuses =
-                      adminOrderStatusTransitions[
-                        normalizeOrderStatus(order.status)
-                      ] ?? [];
-
-                    return (
-                      <article key={order.id} className="order-card">
-                        <div className="order-card-header">
-                          <div>
-                            <strong className="order-card-number">
-                              Pedido {order.number}
-                            </strong>
-                            <p className="order-card-date">{order.createdAt}</p>
-                          </div>
-                          <span className="order-card-status">
-                            {order.status}
-                          </span>
-                        </div>
-
-                        <div className="order-card-summary">
-                          <div className="order-card-summary-row">
-                            <span>Itens</span>
-                            <strong>
-                              {order.items.reduce(
-                                (total, item) => total + item.quantity,
-                                0,
-                              )}
-                            </strong>
-                          </div>
-                          <div className="order-card-summary-row">
-                            <span>Total</span>
-                            <strong>
-                              {order.total.toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              })}
-                            </strong>
-                          </div>
-                        </div>
-
-                        <div className="admin-status-actions">
-                          {nextStatuses.length > 0 ? (
-                            nextStatuses.map((status) => (
-                              <button
-                                key={`${order.id}-${status}`}
-                                type="button"
-                                className="order-card-action order-card-action-primary"
-                                onClick={() =>
-                                  onUpdateOrderStatus(order.id, status)
-                                }
-                              >
-                                {status}
-                              </button>
-                            ))
-                          ) : (
-                            <span className="admin-status-note">
-                              Nenhuma alteração disponível para este status.
-                            </span>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="profile-empty-state">
-                  <h3>Nenhum pedido registrado</h3>
-                  <p>Os pedidos realizados pelos clientes aparecerão aqui.</p>
-                </div>
-              )}
+              <SalesPanel />
             </section>
           ) : null}
 

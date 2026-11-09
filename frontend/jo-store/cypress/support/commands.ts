@@ -1,37 +1,44 @@
 /// <reference types="cypress" />
-// ***********************************************
-// This example commands.ts shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
-//
-//
-// -- This is a parent command --
-// Cypress.Commands.add('login', (email, password) => { ... })
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add('drag', { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add('dismiss', { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-//
-// declare global {
-//   namespace Cypress {
-//     interface Chainable {
-//       login(email: string, password: string): Chainable<void>
-//       drag(subject: string, options?: Partial<TypeOptions>): Chainable<Element>
-//       dismiss(subject: string, options?: Partial<TypeOptions>): Chainable<Element>
-//       visit(originalFn: CommandOriginalFn, url: string, options: Partial<VisitOptions>): Chainable<Element>
-//     }
-//   }
-// }
+
+declare global {
+  // Cypress publica sua extensão de comandos por declaração de namespace global.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      slowClick(selector: string): Chainable<null>;
+      slowType(selector: string, value: string): Chainable<null>;
+      slowSelect(selector: string, value: string): Chainable<null>;
+      slowCheck(selector: string): Chainable<null>;
+    }
+  }
+}
+
+const delay = () => Number(Cypress.expose("uiActionDelayMs") ?? 1200);
+
+// Consultar novamente depois da pausa: a API pode atualizar ou remover o elemento.
+// Não devolver o elemento clicado, pois uma navegação/transição pode desmontá-lo.
+Cypress.Commands.add("slowClick", (selector) => {
+  cy.wait(delay());
+  cy.get(selector).should("be.visible").click();
+  cy.wait(delay());
+  return cy.wrap(null, { log: false });
+});
+Cypress.Commands.add("slowType", (selector, value) => {
+  cy.wait(delay());
+  cy.get(selector).should("be.visible").clear();
+  cy.get(selector).type(value, { delay: 45 });
+  cy.wait(delay());
+  return cy.wrap(null, { log: false });
+});
+Cypress.Commands.add("slowSelect", (selector, value) => {
+  cy.wait(delay());
+  cy.get(selector).should("be.visible").select(value);
+  cy.wait(delay());
+  return cy.wrap(null, { log: false });
+});
+Cypress.Commands.add("slowCheck", (selector) => {
+  cy.wait(delay());
+  cy.get(selector).should("be.visible").check();
+  cy.wait(delay());
+  return cy.wrap(null, { log: false });
+});

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { CardPayment } from "../../services/orderGateway";
+import { orderGateway } from "../../services/orderGateway";
 import { brazilianStates, countries } from "../../utils/addressOptions";
 import { CustomerGatewayError } from "../../services/customerGateway";
 import { useCustomerGateway } from "../../services/useCustomerGateway";
@@ -14,6 +15,7 @@ import type {
 import "./CheckoutPage.css";
 
 type CheckoutPageProps = {
+  isSubmitting: boolean;
   client: ClientDetails;
   selectedCouponsCount: number;
   subtotal: number;
@@ -24,6 +26,7 @@ type CheckoutPageProps = {
   onOpenCoupons: () => void;
   onClientChanged: (client: ClientDetails) => void;
   onShowToast: (toast: Exclude<ToastState, null>) => void;
+  onDeliveryAddressSelected: (address: ClientAddress) => void;
   onConfirmPurchase: (
     cards: ClientCard[],
     address: ClientAddress,
@@ -57,6 +60,7 @@ function createEmptyAddress(): ClientAddressInput {
 }
 
 export function CheckoutPage({
+  isSubmitting,
   client,
   selectedCouponsCount,
   subtotal,
@@ -67,10 +71,16 @@ export function CheckoutPage({
   onOpenCoupons,
   onClientChanged,
   onShowToast,
+  onDeliveryAddressSelected,
   onConfirmPurchase,
 }: CheckoutPageProps) {
   const customerGateway = useCustomerGateway();
-  const deliveryAddresses = client.addresses.filter((address) =>
+  const [temporaryAddresses, setTemporaryAddresses] = useState<ClientAddress[]>([]);
+  const [temporaryCards, setTemporaryCards] = useState<ClientCard[]>([]);
+  const [saveAddressToProfile, setSaveAddressToProfile] = useState(true);
+  const [saveCardToProfile, setSaveCardToProfile] = useState(true);
+  const allCards = [...client.cards, ...temporaryCards];
+  const deliveryAddresses = [...client.addresses, ...temporaryAddresses].filter((address) =>
     address.roles.includes("Entrega"),
   );
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>(() =>
@@ -93,7 +103,7 @@ export function CheckoutPage({
   const [addressForm, setAddressForm] =
     useState<ClientAddressInput>(createEmptyAddress);
 
-  const selectedCards = client.cards.filter((card) =>
+  const selectedCards = allCards.filter((card) =>
     selectedCardIds.includes(card.id),
   );
   const selectedAddress = deliveryAddresses.find(
@@ -101,7 +111,11 @@ export function CheckoutPage({
   );
 
   useEffect(() => {
-    if (selectedCards.length === 0) {
+    if (selectedAddress) onDeliveryAddressSelected(selectedAddress);
+  }, [selectedAddressId]);
+
+  useEffect(() => {
+    if (finalTotal > 0 && selectedCards.length === 0) {
       setCardAmounts({});
       return;
     }
@@ -186,6 +200,14 @@ export function CheckoutPage({
     event.preventDefault();
 
     try {
+      if (!editingCardId && !saveCardToProfile) {
+        const card = await orderGateway.checkoutCard(client.id, cardForm, false);
+        setTemporaryCards(current => [...current, card]);
+        setSelectedCardIds(current => [...current, card.id]);
+        setCardForm(emptyCardForm); setIsAddingCard(false);
+        onShowToast({ variant: "success", title: "Cartão salvo", message: "Cartão disponível somente nesta compra." });
+        return;
+      }
       let updatedClient = editingCardId
         ? await customerGateway.updateCard(client.id, editingCardId, cardForm)
         : await customerGateway.addCard(client.id, cardForm);
@@ -216,6 +238,14 @@ export function CheckoutPage({
   }
 
   function handleEditCard(card: ClientCard) {
+    if (isAddingCard && editingCardId === card.id) {
+      setCardForm(emptyCardForm);
+      setEditingCardId(null);
+      setIsEditingCardPreferred(false);
+      setIsAddingCard(false);
+      return;
+    }
+
     setEditingCardId(card.id);
     setIsEditingCardPreferred(card.preferred);
     setCardForm({
@@ -252,6 +282,13 @@ export function CheckoutPage({
           ? undefined
           : addressForm.complement,
       };
+      if (!editingAddressId && !saveAddressToProfile) {
+        const address = await orderGateway.checkoutAddress(client.id, addressPayload, false);
+        setTemporaryAddresses(current => [...current, address]); setSelectedAddressId(address.id);
+        setAddressForm(createEmptyAddress()); setIsAddingAddress(false);
+        onShowToast({ variant: "success", title: "Endereço salvo", message: "Endereço disponível somente nesta compra." });
+        return;
+      }
       const updatedClient = editingAddressId
         ? await customerGateway.updateAddress(
             client.id,
@@ -324,7 +361,7 @@ export function CheckoutPage({
   }
 
   function handleConfirm() {
-    if (selectedCards.length === 0) {
+    if (finalTotal > 0 && selectedCards.length === 0) {
       onShowToast({
         variant: "error",
         title: "Pagamento pendente",
@@ -342,12 +379,12 @@ export function CheckoutPage({
       return;
     }
 
-    const cardPayments = selectedCards.map((card) => ({
+    const cardPayments = finalTotal === 0 ? [] : selectedCards.map((card) => ({
       cardId: card.id,
       amount: Number((cardAmounts[card.id] ?? "").replace(",", ".")),
     }));
 
-    if (
+    if (finalTotal > 0 &&
       cardPayments.some(
         (payment) => !Number.isFinite(payment.amount) || payment.amount <= 0,
       )
@@ -389,6 +426,7 @@ export function CheckoutPage({
             <div className="checkout-panel-header">
               <h2 className="checkout-panel-title">Cartões</h2>
               <button
+                data-cy="checkout-add-card"
                 type="button"
                 className="checkout-link-button"
                 onClick={() => {
@@ -402,12 +440,13 @@ export function CheckoutPage({
               </button>
             </div>
 
-            {client.cards.length > 0 ? (
+            {allCards.length > 0 ? (
               <div className="checkout-card-list">
-                {client.cards.map((card) => (
+                {allCards.map((card) => (
                   <article key={card.id} className="checkout-payment-card">
                     <label className="checkout-payment-card-main">
                       <input
+                        data-cy={`checkout-card-${card.id}`}
                         type="checkbox"
                         checked={selectedCardIds.includes(card.id)}
                         onChange={() => toggleCard(card.id)}
@@ -450,7 +489,7 @@ export function CheckoutPage({
               <p className="checkout-empty-note">Nenhum cartão cadastrado.</p>
             )}
 
-            {selectedCards.length > 0 ? (
+            {selectedCards.length > 1 ? (
               <div className="checkout-payment-split">
                 <p>Informe o valor a cobrar em cada cartão.</p>
                 <div className="checkout-payment-split-list">
@@ -460,6 +499,7 @@ export function CheckoutPage({
                         {card.brand} final {card.last4}
                       </span>
                       <input
+                        data-cy={`checkout-card-amount-${card.id}`}
                         aria-label={`Valor no cartão ${card.brand} final ${card.last4}`}
                         inputMode="decimal"
                         value={cardAmounts[card.id] ?? ""}
@@ -494,6 +534,7 @@ export function CheckoutPage({
                   </p>
                 ) : null}
                 <input
+                  data-cy="checkout-card-number"
                   required
                   inputMode="numeric"
                   placeholder={
@@ -508,6 +549,7 @@ export function CheckoutPage({
                   }
                 />
                 <input
+                  data-cy="checkout-card-holder"
                   required
                   placeholder="Nome impresso no cartão"
                   value={cardForm.holder}
@@ -520,6 +562,7 @@ export function CheckoutPage({
                 />
                 <div className="checkout-inline-form-row">
                   <select
+                    data-cy="checkout-card-brand"
                     required
                     value={cardForm.brand}
                     onChange={(event) =>
@@ -536,6 +579,7 @@ export function CheckoutPage({
                     <option>American Express</option>
                   </select>
                   <input
+                    data-cy="checkout-card-security-code"
                     required
                     inputMode="numeric"
                     maxLength={4}
@@ -561,6 +605,7 @@ export function CheckoutPage({
                     Tornar este cartão preferencial
                   </label>
                 ) : null}
+                {!editingCardId && <label><input data-cy="save-card-profile" type="checkbox" checked={saveCardToProfile} onChange={e => setSaveCardToProfile(e.target.checked)} />Salvar cartão no meu perfil</label>}
                 <button type="submit" className="checkout-inline-submit">
                   Salvar cartão
                 </button>
@@ -572,6 +617,7 @@ export function CheckoutPage({
             <div className="checkout-panel-header">
               <h2 className="checkout-panel-title">Endereço de entrega</h2>
               <button
+                data-cy="checkout-add-address"
                 type="button"
                 className="checkout-link-button"
                 onClick={() => {
@@ -594,6 +640,7 @@ export function CheckoutPage({
                   >
                     <label className="checkout-address-main">
                       <input
+                        data-cy={`checkout-address-${address.id}`}
                         type="radio"
                         name="delivery-address"
                         checked={selectedAddressId === address.id}
@@ -652,6 +699,7 @@ export function CheckoutPage({
                 </p>
                 <div className="checkout-inline-form-row">
                   <input
+                    data-cy="checkout-address-label"
                     required
                     placeholder="Nome do endereço"
                     value={addressForm.label}
@@ -663,6 +711,7 @@ export function CheckoutPage({
                     }
                   />
                   <select
+                    data-cy="checkout-address-residence-type"
                     required
                     value={addressForm.residenceType}
                     onChange={(event) =>
@@ -681,6 +730,7 @@ export function CheckoutPage({
                 </div>
                 <div className="checkout-inline-form-row">
                   <select
+                    data-cy="checkout-address-street-type"
                     required
                     value={addressForm.streetType}
                     onChange={(event) =>
@@ -697,6 +747,7 @@ export function CheckoutPage({
                     <option>Alameda</option>
                   </select>
                   <input
+                    data-cy="checkout-address-street"
                     required
                     placeholder="Logradouro"
                     value={addressForm.street}
@@ -710,6 +761,7 @@ export function CheckoutPage({
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
+                    data-cy="checkout-address-complement"
                     disabled={isAddressComplementNotApplicable}
                     placeholder="Complemento"
                     value={addressForm.complement ?? ""}
@@ -741,6 +793,7 @@ export function CheckoutPage({
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
+                    data-cy="checkout-address-number"
                     required
                     placeholder="Número"
                     value={addressForm.number}
@@ -752,6 +805,7 @@ export function CheckoutPage({
                     }
                   />
                   <input
+                    data-cy="checkout-address-neighborhood"
                     required
                     placeholder="Bairro"
                     value={addressForm.neighborhood}
@@ -765,6 +819,7 @@ export function CheckoutPage({
                 </div>
                 <div className="checkout-inline-form-row">
                   <input
+                    data-cy="checkout-address-city"
                     required
                     placeholder="Cidade"
                     value={addressForm.city}
@@ -776,6 +831,7 @@ export function CheckoutPage({
                     }
                   />
                   <select
+                    data-cy="checkout-address-state"
                     required
                     value={addressForm.state}
                     onChange={(event) =>
@@ -795,6 +851,7 @@ export function CheckoutPage({
                 </div>
                 <div className="checkout-inline-form-row">
                   <select
+                    data-cy="checkout-address-country"
                     required
                     value={addressForm.country}
                     onChange={(event) =>
@@ -812,6 +869,7 @@ export function CheckoutPage({
                     ))}
                   </select>
                   <input
+                    data-cy="checkout-address-zip-code"
                     required
                     placeholder="CEP"
                     value={addressForm.zipCode}
@@ -834,6 +892,7 @@ export function CheckoutPage({
                     }))
                   }
                 />
+                {!editingAddressId && <label><input data-cy="save-address-profile" type="checkbox" checked={saveAddressToProfile} onChange={e => setSaveAddressToProfile(e.target.checked)} />Salvar endereço no meu perfil</label>}
                 <button type="submit" className="checkout-inline-submit">
                   Salvar endereço
                 </button>
@@ -859,7 +918,7 @@ export function CheckoutPage({
             </div>
             <div className="checkout-summary-row">
               <span>Frete</span>
-              <strong>
+              <strong data-cy="checkout-shipping-total">
                 {shippingTotal.toLocaleString("pt-BR", {
                   style: "currency",
                   currency: "BRL",
@@ -889,7 +948,7 @@ export function CheckoutPage({
           ) : null}
           <div className="cart-summary-total">
             <span>Total da compra</span>
-            <strong>
+            <strong data-cy="checkout-final-total">
               {finalTotal.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
@@ -897,11 +956,13 @@ export function CheckoutPage({
             </strong>
           </div>
           <button
+            data-cy="checkout-confirm-payment"
+            disabled={isSubmitting}
             type="button"
             className="cart-checkout-button"
             onClick={handleConfirm}
           >
-            Confirmar pagamento
+            {isSubmitting ? "Registrando pedido..." : "Confirmar pagamento"}
           </button>
         </aside>
       </div>

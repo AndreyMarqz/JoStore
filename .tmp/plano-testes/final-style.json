@@ -1,0 +1,170 @@
+{
+  "input": "C:\\Projetos\\JoStore - Projeto\\JoStore\\docs\\PlanoTestes_GrupoAndrey.docx",
+  "fonts_by_char_count": {
+    "Arial": 33676
+  },
+  "direct_run_formatting_runs": 1405,
+  "direct_paragraph_formatting_paragraphs": 1500,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 1,
+      "text": "Plano de Testes",
+      "style": ""
+    },
+    {
+      "para_index": 2,
+      "text": "JoStore",
+      "style": ""
+    },
+    {
+      "para_index": 175,
+      "text": "Data",
+      "style": ""
+    },
+    {
+      "para_index": 176,
+      "text": "Vers\u00e3o",
+      "style": ""
+    },
+    {
+      "para_index": 177,
+      "text": "Descri\u00e7\u00e3o",
+      "style": ""
+    },
+    {
+      "para_index": 178,
+      "text": "Autor",
+      "style": ""
+    },
+    {
+      "para_index": 179,
+      "text": "Revisor",
+      "style": ""
+    },
+    {
+      "para_index": 185,
+      "text": "Campo",
+      "style": ""
+    },
+    {
+      "para_index": 186,
+      "text": "Preenchimento",
+      "style": ""
+    },
+    {
+      "para_index": 195,
+      "text": "Documento",
+      "style": ""
+    },
+    {
+      "para_index": 196,
+      "text": "Vers\u00e3o",
+      "style": ""
+    },
+    {
+      "para_index": 197,
+      "text": "Observa\u00e7\u00e3o",
+      "style": ""
+    },
+    {
+      "para_index": 207,
+      "text": "Termo",
+      "style": ""
+    },
+    {
+      "para_index": 208,
+      "text": "Defini\u00e7\u00e3o",
+      "style": ""
+    },
+    {
+      "para_index": 221,
+      "text": "Funcionalidade",
+      "style": ""
+    },
+    {
+      "para_index": 222,
+      "text": "Requisitos do DRS",
+      "style": ""
+    },
+    {
+      "para_index": 223,
+      "text": "Caso de uso",
+      "style": ""
+    },
+    {
+      "para_index": 224,
+      "text": "Prioridade",
+      "style": ""
+    },
+    {
+      "para_index": 245,
+      "text": "Item",
+      "style": ""
+    },
+    {
+      "para_index": 246,
+      "text": "Motivo da exclus\u00e3o",
+      "style": ""
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "Plano de Testes",
+        "style": ""
+      },
+      {
+        "para_index": 2,
+        "text": "JoStore",
+        "style": ""
+      },
+      {
+        "para_index": 4,
+        "text": "Autor: Andrey Marques\nVers\u00e3o 1.0\n15 de outubro de 2026\n",
+        "style": ""
+      },
+      {
+        "para_index": 6,
+        "text": "Hist\u00f3rico de vers\u00f5es",
+        "style": "Heading 1"
+      },
+      {
+        "para_index": 7,
+        "text": "",
+        "style": ""
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 1,
+        "run_text": "Plano de Testes",
+        "style": ""
+      },
+      {
+        "para_index": 2,
+        "run_text": "JoStore",
+        "style": ""
+      },
+      {
+        "para_index": 3,
+        "run_text": "Gest\u00e3o de clientes e cria\u00e7\u00e3o de pedidos",
+        "style": ""
+      },
+      {
+        "para_index": 4,
+        "run_text": "Autor: Andrey Marques\n",
+        "style": ""
+      },
+      {
+        "para_index": 4,
+        "run_text": "Vers\u00e3o 1.0\n",
+        "style": ""
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

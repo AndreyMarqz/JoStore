@@ -44,7 +44,7 @@ class CustomerServiceTest {
                 mock(CreditCardRepository.class),
                 mock(ResidenceTypeRepository.class),
                 mock(PublicPlaceTypeRepository.class),
-                passwordEncoder);
+                passwordEncoder, mock(com.jostore.dev.repository.OperationLogRepository.class));
 
         CustomerRegistrationRequestDto request = new CustomerRegistrationRequestDto(
                 "Ana Cliente da Silva",

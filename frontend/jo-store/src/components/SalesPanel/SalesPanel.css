@@ -1,0 +1,116 @@
+.sales-panel {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  position: relative;
+}
+
+.profile-panel > .sales-panel {
+  margin-top: -44px;
+  padding-top: 20px;
+}
+.sales-panel section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sales-view-tabs {
+  display: flex;
+  width: fit-content;
+  justify-self: start;
+  justify-content: flex-start;
+  gap: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-surface, #ffffff);
+}
+
+.sales-panel .sales-view-tabs button {
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-surface, #ffffff);
+  color: #5f5f5f;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.sales-panel .sales-view-tabs button:hover {
+  background: #fafafa;
+  color: #1d1d1b;
+}
+
+.sales-panel .sales-view-tabs button.is-active {
+  background: var(--color-surface, #ffffff);
+  color: #1d1d1b;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.sales-panel .sales-view-tabs button:focus-visible {
+  outline: 2px solid #1d1d1b;
+  outline-offset: 2px;
+}
+
+.sales-panel button {
+  background: #151515;
+  color: white;
+  border: 1px solid #151515;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+.sales-panel button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.sales-panel input,
+.sales-panel select {
+  padding: 0.55rem;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  max-width: 100%;
+}
+.sales-panel input[type="number"] {
+  width: 80px;
+}
+.sales-panel label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sales-filters,
+.sales-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.sales-card {
+  border: 1px solid #d8d8d8;
+  border-radius: 12px;
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.8rem;
+}
+.sales-card header,
+.sales-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+.sales-feedback {
+  padding: 1rem;
+  border: 1px solid #777;
+  border-radius: 8px;
+}
+.sales-card details {
+  font-size: 0.9rem;
+}
+.sales-card summary {
+  cursor: pointer;
+}

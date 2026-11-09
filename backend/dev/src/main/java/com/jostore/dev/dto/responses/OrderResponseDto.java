@@ -11,4 +11,4 @@ public record OrderResponseDto(
         AddressResponseDto deliveryAddress, List<CartItemResponseDto> items,
         List<OrderPaymentResponseDto> payments, List<CouponResponseDto> coupons,
         BigDecimal subtotal, BigDecimal shipping, BigDecimal couponDiscount, BigDecimal total,
-        CouponResponseDto generatedExchangeCoupon) { }
+        CouponResponseDto generatedExchangeCoupon, List<java.util.Map<String,Object>> history) { }

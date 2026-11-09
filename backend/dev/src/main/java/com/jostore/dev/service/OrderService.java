@@ -71,12 +71,17 @@ public class OrderService {
     private final CouponRepository couponRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final OperationLogRepository operationLogRepository;
+    private final com.jostore.dev.repository.SalesRepository sales;
+    private final SalesClock clock;
+    @org.springframework.beans.factory.annotation.Value("${jostore.cart.reservation-seconds:600}")
+    private long reservationSeconds;
 
     public OrderService(CustomerRepository customerRepository, ProductRepository productRepository,
             InventoryRepository inventoryRepository, ShoppingCartRepository shoppingCartRepository,
             CartItemRepository cartItemRepository, AddressRepository addressRepository,
             CreditCardRepository creditCardRepository, CouponRepository couponRepository,
-            PurchaseOrderRepository purchaseOrderRepository, OperationLogRepository operationLogRepository) {
+            PurchaseOrderRepository purchaseOrderRepository, OperationLogRepository operationLogRepository,
+            com.jostore.dev.repository.SalesRepository sales, SalesClock clock) {
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
@@ -87,10 +92,13 @@ public class OrderService {
         this.couponRepository = couponRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.operationLogRepository = operationLogRepository;
+        this.sales = sales;
+        this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public CartResponseDto getCart(UUID customerId) {
+        sales.lock(); sales.expire(clock.now());
         Customer customer = findCustomer(customerId);
         return toCartResponse(shoppingCartRepository.findByCustomerId(customer.getId()).orElse(null));
     }
@@ -105,6 +113,7 @@ public class OrderService {
 
     @Transactional
     public CartResponseDto addItem(UUID customerId, CartItemRequestDto request) {
+        sales.lock(); sales.expire(clock.now());
         Customer customer = findCustomer(customerId);
         Product product = findProduct(request.productId());
         ShoppingCart cart = shoppingCartRepository.findByCustomerId(customerId)
@@ -113,11 +122,17 @@ public class OrderService {
         CartItem item = cartItemRepository.findByCartIdAndProductIdAndSize(cart.getId(), product.getId(), size)
                 .orElse(null);
         int targetQuantity = request.quantity() + (item == null ? 0 : item.getQuantity());
-        validateAvailableQuantity(product, targetQuantity);
+        int otherSizes = cart.getItems().stream().filter(i -> i.getProduct().getId().equals(product.getId()) && !i.getSize().equals(size)).mapToInt(CartItem::getQuantity).sum();
+        validateAvailableQuantity(product, targetQuantity + otherSizes, cart.getId());
         if (item == null)
             cart.addItem(new CartItem(product, size, request.quantity()));
         else
             item.changeQuantity(targetQuantity);
+        shoppingCartRepository.saveAndFlush(cart);
+        var expires = clock.now().plusSeconds(reservationSeconds);
+        sales.reserve(cart.getId(), product.getId(), targetQuantity + otherSizes, expires);
+        sales.renew(cart.getId(), expires);
+        sales.jdbc().update("DELETE FROM itens_carrinho_removidos WHERE cart_id=? AND product_id=?",cart.getId(),product.getId());
         operationLogRepository.save(new OperationLog(customerId, "INSERT", "ITEM_CARRINHO",
                 "Produto " + product.getCode() + ", tamanho " + size + ", quantidade " + targetQuantity));
         return toCartResponse(cart);
@@ -125,14 +140,17 @@ public class OrderService {
 
     @Transactional
     public CartResponseDto changeItemQuantity(UUID customerId, UUID itemId, CartItemRequestDto request) {
+        sales.lock(); sales.expire(clock.now());
         CartItem item = cartItemRepository.findByIdAndCartCustomerId(itemId, customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item do carrinho não encontrado."));
         if (!item.getProduct().getId().equals(request.productId())
                 || !item.getSize().equals(normalizedSize(request.size()))) {
             throw new BusinessRuleException("Produto e tamanho do item do carrinho não podem ser alterados.");
         }
-        validateAvailableQuantity(item.getProduct(), request.quantity());
+        int others = item.getCart().getItems().stream().filter(i -> !i.getId().equals(itemId) && i.getProduct().getId().equals(item.getProduct().getId())).mapToInt(CartItem::getQuantity).sum();
+        validateAvailableQuantity(item.getProduct(), request.quantity()+others,item.getCart().getId());
         item.changeQuantity(request.quantity());
+        sales.reserve(item.getCart().getId(), item.getProduct().getId(), request.quantity()+others, sales.expires(item.getCart().getId()));
         operationLogRepository.save(new OperationLog(customerId, "UPDATE", "ITEM_CARRINHO",
                 "Item " + itemId + ", quantidade " + request.quantity()));
         return toCartResponse(item.getCart());
@@ -140,21 +158,29 @@ public class OrderService {
 
     @Transactional
     public void removeItem(UUID customerId, UUID itemId) {
+        sales.lock(); sales.expire(clock.now());
         CartItem item = cartItemRepository.findByIdAndCartCustomerId(itemId, customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item do carrinho não encontrado."));
-        item.getCart().removeItem(item);
+        ShoppingCart cart = item.getCart();
+        UUID productId = item.getProduct().getId();
+        // RN0045: ao liberar um produto, retirar suas linhas de todos os tamanhos.
+        new ArrayList<>(cart.getItems()).stream().filter(i -> i.getProduct().getId().equals(productId)).forEach(cart::removeItem);
+        sales.reserve(cart.getId(),productId,0,clock.now());
         operationLogRepository.save(new OperationLog(customerId, "DELETE", "ITEM_CARRINHO", "Item " + itemId));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(noRollbackFor = com.jostore.dev.exception.CartAdjustedException.class)
     public OrderQuoteResponseDto quote(UUID customerId, OrderQuoteRequestDto request) {
+        sales.lock(); sales.expire(clock.now());
         ShoppingCart cart = findCartWithItems(customerId);
+        validateCartAvailability(cart);
         Address address = findDeliveryAddress(customerId, request.deliveryAddressId());
         return quote(cart, address, request.couponIds());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = com.jostore.dev.exception.CartAdjustedException.class)
     public OrderResponseDto createOrder(UUID customerId, CreateOrderRequestDto request) {
+        sales.lock(); sales.expire(clock.now());
         if (request.quote() == null)
             throw new BusinessRuleException("Endereço e cupons da compra são obrigatórios.");
         ShoppingCart cart = findCartWithItems(customerId);
@@ -180,17 +206,16 @@ public class OrderService {
         for (Coupon coupon : usedCoupons) {
             BigDecimal usedValue = coupon.getValue().min(remainingCouponValue);
             order.addCoupon(new OrderCoupon(coupon, usedValue));
-            coupon.use();
             remainingCouponValue = remainingCouponValue.subtract(usedValue);
         }
 
-        Coupon generatedCoupon = generateExchangeCouponIfNeeded(usedCoupons, quote.total().add(quote.couponDiscount()),
-                customer);
-        PurchaseOrder saved = purchaseOrderRepository.save(order);
+        PurchaseOrder saved = purchaseOrderRepository.saveAndFlush(order);
+        sales.transfer(cart.getId(),saved.getId());
+        sales.history(saved.getId(),null,"EM_PROCESSAMENTO","CLIENTE:"+customerId,"Compra finalizada; aguardando validação do pagamento.",clock.now());
         new ArrayList<>(cart.getItems()).forEach(cart::removeItem);
         operationLogRepository.save(new OperationLog(customerId, "INSERT", "PEDIDO",
                 "Pedido " + saved.getCode() + " criado com status EM_PROCESSAMENTO."));
-        return toOrderResponse(saved, generatedCoupon);
+        return toOrderResponse(saved, null);
     }
 
     private OrderQuoteResponseDto quote(ShoppingCart cart, Address address, List<UUID> couponIds) {
@@ -256,17 +281,6 @@ public class OrderService {
         }
     }
 
-    private Coupon generateExchangeCouponIfNeeded(List<Coupon> coupons, BigDecimal grossTotal, Customer customer) {
-        BigDecimal selectedValue = coupons.stream().map(Coupon::getValue).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal difference = selectedValue.subtract(grossTotal);
-        if (difference.compareTo(BigDecimal.ZERO) <= 0)
-            return null;
-        Coupon coupon = new Coupon("TROCA-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
-                CouponTypeEnum.TROCA, money(difference), "Cupom de troca gerado pela diferença de cupons utilizados.",
-                customer);
-        return couponRepository.save(coupon);
-    }
-
     private List<Coupon> resolveCoupons(List<UUID> couponIds, UUID customerId) {
         if (couponIds == null || couponIds.isEmpty())
             return List.of();
@@ -274,23 +288,46 @@ public class OrderService {
         if (ids.size() != couponIds.size())
             throw new BusinessRuleException("Um cupom não pode ser informado mais de uma vez.");
         List<Coupon> coupons = couponRepository.findByIdInAndActiveTrue(ids);
+        for(UUID id:ids) {
+            Integer pending = sales.jdbc().queryForObject("SELECT count(*) FROM pedidos_cupons pc JOIN pedidos p ON p.ped_id=pc.pcu_ped_id WHERE pc.pcu_cup_id=? AND p.ped_status='EM_PROCESSAMENTO'",Integer.class,id);
+            if(pending>0) throw new BusinessRuleException("Cupom já reservado para outra compra em processamento.");
+        }
         if (coupons.size() != ids.size() || coupons.stream()
                 .anyMatch(coupon -> coupon.getCustomer() != null && !coupon.getCustomer().getId().equals(customerId)))
             throw new BusinessRuleException("Um ou mais cupons informados não estão disponíveis.");
         return coupons.stream().sorted(Comparator.comparing(Coupon::getValue).reversed()).toList();
     }
 
-    private void validateAvailableQuantity(Product product, int quantity) {
+    private void validateAvailableQuantity(Product product, int quantity, UUID cartId) {
         Inventory inventory = inventoryRepository.findByProductId(product.getId())
                 .orElseThrow(() -> new BusinessRuleException("Estoque do produto não encontrado."));
-        if (!product.isActive() || inventory.getAvailableQuantity() < quantity) {
+        if (!product.isActive() || inventory.getAvailableQuantity() - sales.reserved(product.getId(),cartId) < quantity) {
             throw new BusinessRuleException(
                     "A quantidade solicitada para " + product.getName() + " não está disponível em estoque.");
         }
     }
 
     private void validateCartAvailability(ShoppingCart cart) {
-        cart.getItems().forEach(item -> validateAvailableQuantity(item.getProduct(), item.getQuantity()));
+        boolean changed=false;
+        var remaining=new java.util.HashMap<UUID,Integer>();
+        for(CartItem item:new ArrayList<>(cart.getItems())) {
+            UUID pid=item.getProduct().getId();
+            int available=remaining.computeIfAbsent(pid,id -> item.getProduct().isActive() ? Math.max(0,inventoryRepository.findByProductId(id).map(Inventory::getAvailableQuantity).orElse(0)-sales.reserved(id,cart.getId())) : 0);
+            int allowed=Math.min(item.getQuantity(),available);
+            remaining.put(pid,available-allowed);
+            if(allowed!=item.getQuantity()) {
+                changed=true;
+                sales.jdbc().update("INSERT INTO itens_carrinho_removidos VALUES (?,?,?,?,?,?,?,?)",UUID.randomUUID(),cart.getId(),pid,item.getProduct().getName(),item.getSize(),item.getQuantity()-allowed,"Disponibilidade de estoque alterada.",java.sql.Timestamp.from(clock.now()));
+                if(allowed==0) cart.removeItem(item); else item.changeQuantity(allowed);
+            }
+        }
+        if(changed) {
+            var expires=sales.expires(cart.getId());
+            for(UUID pid:remaining.keySet()) sales.reserve(cart.getId(),pid,cart.getItems().stream().filter(i->i.getProduct().getId().equals(pid)).mapToInt(CartItem::getQuantity).sum(),expires==null?clock.now():expires);
+            shoppingCartRepository.saveAndFlush(cart);
+            sales.audit(cart.getCustomer().getId(),"UPDATE","CARRINHO","Quantidades reconciliadas com o estoque; carrinho "+cart.getId(),clock.now());
+            throw new com.jostore.dev.exception.CartAdjustedException();
+        }
     }
 
     private Customer findCustomer(UUID id) {
@@ -334,17 +371,16 @@ public class OrderService {
     }
 
     private String nextOrderCode() {
-        PurchaseOrder last = purchaseOrderRepository.findTopByOrderByCodeDesc();
-        int next = last == null ? 1 : Integer.parseInt(last.getCode().substring(4)) + 1;
-        return "PED-%06d".formatted(next);
+        return sales.nextCode();
     }
 
     private CartResponseDto toCartResponse(ShoppingCart cart) {
         if (cart == null)
-            return new CartResponseDto(null, List.of(), BigDecimal.ZERO.setScale(2));
+            return new CartResponseDto(null, List.of(), BigDecimal.ZERO.setScale(2),null,clock.now(),false,List.of());
         List<CartItemResponseDto> items = cart.getItems().stream().map(this::toCartItemResponse).toList();
         BigDecimal subtotal = items.stream().map(CartItemResponseDto::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new CartResponseDto(cart.getId(), items, money(subtotal));
+        var expires=sales.expires(cart.getId());
+        return new CartResponseDto(cart.getId(), items, money(subtotal),expires,clock.now(),expires!=null && !expires.isAfter(clock.now().plusSeconds(300)),sales.removed(cart.getId()));
     }
 
     private CartItemResponseDto toCartItemResponse(CartItem item) {
@@ -362,7 +398,7 @@ public class OrderService {
     }
 
     private AddressResponseDto toAddressResponse(Address address) {
-        return new AddressResponseDto(address.getId(), address.getIdentification(), address.getPurposes(),
+        return new AddressResponseDto(address.getId(), address.getIdentification(), java.util.Set.copyOf(address.getPurposes()),
                 address.getResidenceType().getDescription(),
                 address.getPublicPlaceType().getDescription(), address.getPublicPlace(), address.getAddressNumber(),
                 address.getNeighborhood(),
@@ -370,14 +406,14 @@ public class OrderService {
                 address.getObservation());
     }
 
-    private OrderResponseDto toOrderResponse(PurchaseOrder order, Coupon generatedCoupon) {
+    public OrderResponseDto toOrderResponse(PurchaseOrder order, Coupon generatedCoupon) {
         List<CartItemResponseDto> items = order.getItems().stream().map(item -> new CartItemResponseDto(item.getId(),
                 new ProductResponseDto(item.getProduct().getId(), item.getProductCode(), item.getProductName(),
                         item.getProduct().getDescription(), item.getUnitPrice(), item.getProduct().getImageUrl(), 0),
                 item.getSize(), item.getQuantity(), item.getUnitPrice(), item.getTotal())).toList();
         List<OrderPaymentResponseDto> payments = order.getPayments().stream()
                 .map(payment -> new OrderPaymentResponseDto(payment.getCard().getId(),
-                        payment.getCard().getCardFlag() + " final " + payment.getCard().getLast4(),
+                        payment.getDescription(),
                         payment.getAmount()))
                 .toList();
         List<CouponResponseDto> coupons = order.getCoupons().stream().map(OrderCoupon::getCoupon)
@@ -385,6 +421,6 @@ public class OrderService {
         return new OrderResponseDto(order.getId(), order.getCode(), order.getStatus(), order.getCreatedAt(),
                 toAddressResponse(order.getDeliveryAddress()), items,
                 payments, coupons, order.getSubtotal(), order.getShipping(), order.getCouponDiscount(),
-                order.getTotal(), generatedCoupon == null ? null : toCouponResponse(generatedCoupon));
+                order.getTotal(), generatedCoupon == null ? null : toCouponResponse(generatedCoupon),sales.history(order.getId()));
     }
 }

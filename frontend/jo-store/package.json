@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cy:open": "cypress open",
-    "cy:run": "cypress run"
+    "cy:run": "cypress run",
+    "cy:pedidos": "cypress run --spec \"cypress/e2e/pedidos/**/*.cy.ts\"",
+    "cy:vendas": "cypress run --spec \"cypress/e2e/pedidos/**/*.cy.ts,cypress/e2e/vendas/**/*.cy.ts\"",
+    "cy:apresentacao": "cypress open --expose uiActionDelayMs=1800"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -25,6 +25,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class CreditCard {
+    @Column(name = "cart_perfil", nullable = false)
+    private boolean savedToProfile = true;
+    public void useOnlyForCheckout() { savedToProfile = false; }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

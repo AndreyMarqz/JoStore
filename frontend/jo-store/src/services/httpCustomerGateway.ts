@@ -172,11 +172,11 @@ function mapPhoneFromApi(phone: ApiPhone): ClientPhone {
   };
 }
 
-function mapAddressFromApi(address: ApiAddress): ClientAddress {
+export function mapAddressFromApi(address: ApiAddress): ClientAddress {
   return { ...address, roles: address.roles.map((role) => roleFromApi[role]) };
 }
 
-function mapCardFromApi(card: ApiCard): ClientCard {
+export function mapCardFromApi(card: ApiCard): ClientCard {
   return { ...card, brand: brandFromApi[card.brand] };
 }
 
@@ -196,7 +196,7 @@ function mapCustomerFromApi(customer: ApiCustomer): ClientDetails {
   };
 }
 
-function mapAddressToApi(address: ClientAddressInput) {
+export function mapAddressToApi(address: ClientAddressInput) {
   return {
     ...address,
     label: address.label ?? "",

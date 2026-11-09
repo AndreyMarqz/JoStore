@@ -50,6 +50,15 @@ public class PurchaseOrder {
     private BigDecimal total;
     @Column(name = "ped_created_at", nullable = false)
     private Instant createdAt;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "ped_cup_gerado_id")
+    private com.jostore.dev.model.coupon.Coupon generatedCoupon;
+
+    public void transitionTo(OrderStatusEnum expected, OrderStatusEnum next) {
+        if (status != expected) throw new com.jostore.dev.exception.BusinessRuleException(
+            "Transição inválida: o pedido deve estar " + expected.name().replace('_', ' ') + ".");
+        status = next;
+    }
+    public void recordGeneratedCoupon(com.jostore.dev.model.coupon.Coupon coupon) { generatedCoupon = coupon; }
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

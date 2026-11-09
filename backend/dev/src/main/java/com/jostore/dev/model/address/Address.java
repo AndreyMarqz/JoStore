@@ -30,6 +30,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class Address {
+    @Column(name = "end_perfil", nullable = false)
+    private boolean savedToProfile = true;
+    public void useOnlyForCheckout() { savedToProfile = false; }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

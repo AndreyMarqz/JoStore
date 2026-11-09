@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -42,6 +42,7 @@ import {
   type ApiCart,
   type ApiCartItem,
   type ApiProduct,
+  type ApiQuote,
   type CardPayment,
 } from "./services/orderGateway";
 import { CustomerGatewayError } from "./services/customerGateway";
@@ -118,7 +119,12 @@ function App() {
     null,
   );
   const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [checkoutAddressId, setCheckoutAddressId] = useState("");
+  const [checkoutQuote, setCheckoutQuote] = useState<ApiQuote | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const orderSubmission = useRef(false);
   const [selectedSize, setSelectedSize] = useState("");
+  const [cartSnapshot, setCartSnapshot] = useState<ApiCart | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
   const [currentView, setCurrentView] = useState<ViewMode>(() =>
@@ -136,6 +142,25 @@ function App() {
   const [selectedCouponIds, setSelectedCouponIds] = useState<string[]>([]);
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    if (!activeClient || !["cart", "checkout"].includes(currentView)) return;
+    let active = true;
+    async function refreshCart() {
+      try {
+        const cart = await orderGateway.getCart(activeClient!.id);
+        if (!active) return;
+        setCartSnapshot(cart);
+        setCartItems(current => {
+          const next = mapCart(cart);
+          return JSON.stringify(current) === JSON.stringify(next) ? current : next;
+        });
+      } catch { /* A próxima interação apresentará o erro da API. */ }
+    }
+    void refreshCart();
+    const timer = window.setInterval(() => void refreshCart(), 2000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [activeClient?.id, currentView]);
 
   function navigate(
     view: Exclude<ViewMode, "product">,
@@ -411,6 +436,28 @@ function App() {
     0,
     subtotal + shippingTotal - couponDiscountTotal,
   );
+  const couponPurchaseTotal = checkoutQuote
+    ? checkoutQuote.subtotal + checkoutQuote.shipping
+    : subtotal + shippingTotal;
+
+  useEffect(() => {
+    if (!activeClient || currentView !== "checkout" || !checkoutAddressId || isSubmittingOrder || cartItems.length === 0) return;
+    let cancelled = false;
+    void orderGateway
+      .quote(activeClient.id, checkoutAddressId, selectedCouponIds)
+      .then((quote) => {
+        if (!cancelled && !orderSubmission.current) setCheckoutQuote(quote);
+      })
+      .catch((error) => {
+        if (!cancelled && !orderSubmission.current) {
+          setCheckoutQuote(null);
+          setToast({ variant: "error", title: "Revise a compra", message: error.message });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClient?.id, checkoutAddressId, currentView, selectedCouponIds.join("|"), cartItems, isSubmittingOrder]);
 
   function openProductModal(product: ProductCard) {
     setSelectedProduct(product);
@@ -501,6 +548,10 @@ function App() {
       return;
     }
 
+    setCheckoutQuote(null);
+    setCheckoutAddressId(
+      activeClient?.addresses.find((address) => address.roles.includes("Entrega"))?.id ?? "",
+    );
     setIsCouponModalOpen(false);
     navigate("checkout");
   }
@@ -512,22 +563,56 @@ function App() {
       return;
     }
 
-    setSelectedCouponIds((current) => {
-      if (current.includes(couponId))
-        return current.filter((id) => id !== couponId);
-      const alreadyHasPromotional = availableCoupons.some(
-        (item) => current.includes(item.id) && item.type === "PROMOCIONAL",
-      );
-      if (coupon.type === "PROMOCIONAL" && alreadyHasPromotional) {
-        setToast({
-          variant: "error",
-          title: "Cupom não aplicado",
-          message: "A compra permite apenas um cupom promocional.",
-        });
-        return current;
+    if (selectedCouponIds.includes(couponId)) {
+      setSelectedCouponIds((current) => current.filter((id) => id !== couponId));
+      return;
+    }
+
+    const alreadyHasPromotional = availableCoupons.some(
+      (item) => selectedCouponIds.includes(item.id) && item.type === "PROMOCIONAL",
+    );
+    if (coupon.type === "PROMOCIONAL" && alreadyHasPromotional) {
+      setToast({
+        variant: "error",
+        title: "Cupom não aplicado",
+        message: "A compra permite apenas um cupom promocional.",
+      });
+      return;
+    }
+
+    // RN0035/RN0036: a combinação usa primeiro os cupons de maior valor.
+    // O último cupom necessário pode ultrapassar o saldo e gerar a diferença
+    // como cupom de troca; cupons menores após a cobertura são desnecessários.
+    const selectedIds = [...selectedCouponIds, couponId];
+    const selectedCoupons = availableCoupons
+      .filter((item) => selectedIds.includes(item.id))
+      .sort((first, second) => second.amount - first.amount);
+    const retainedIds: string[] = [];
+    const removedIds: string[] = [];
+    let coveredValue = 0;
+
+    for (const selectedCoupon of selectedCoupons) {
+      if (coveredValue >= couponPurchaseTotal) {
+        removedIds.push(selectedCoupon.id);
+        continue;
       }
-      return [...current, couponId];
-    });
+      retainedIds.push(selectedCoupon.id);
+      coveredValue += selectedCoupon.amount;
+    }
+
+    setSelectedCouponIds(retainedIds);
+    if (removedIds.length > 0) {
+      const selectedCouponWasRemoved = removedIds.includes(couponId);
+      setToast({
+        variant: "success",
+        title: "Cupons ajustados",
+        message: selectedCouponWasRemoved
+          ? "O cupom selecionado não foi aplicado porque os cupons de maior valor já cobrem a compra."
+          : removedIds.length > 1
+          ? `${removedIds.length} cupons de menor valor foram removidos porque a compra já está coberta.`
+          : "1 cupom de menor valor foi removido porque a compra já está coberta.",
+      });
+    }
   }
 
   async function addProductToCart(
@@ -657,9 +742,7 @@ function App() {
     if (!activeClient) return;
     try {
       await orderGateway.removeCartItem(activeClient.id, itemId);
-      setCartItems((currentItems) =>
-        currentItems.filter((item) => item.cartItemId !== itemId),
-      );
+      setCartItems(mapCart(await orderGateway.getCart(activeClient.id)));
     } catch (error) {
       setToast({
         variant: "error",
@@ -677,7 +760,9 @@ function App() {
     address: ClientAddress,
     cardPayments: CardPayment[],
   ) {
-    if (!activeClient) return;
+    if (!activeClient || orderSubmission.current) return;
+    orderSubmission.current = true;
+    setIsSubmittingOrder(true);
     try {
       const order = await orderGateway.createOrder(
         activeClient.id,
@@ -707,7 +792,9 @@ function App() {
       ]);
       setCartItems([]);
       setSelectedCouponIds([]);
-      const coupons = await orderGateway.listCoupons(activeClient.id);
+      setCheckoutQuote(null);
+      // Uma falha ao atualizar a lista não desfaz um pedido já registrado.
+      const coupons = await orderGateway.listCoupons(activeClient.id).catch(() => []);
       setAvailableCoupons(
         coupons.map((coupon) => ({
           id: coupon.id,
@@ -728,6 +815,8 @@ function App() {
       });
       openHomePage();
     } catch (error) {
+      const refreshedCart = await orderGateway.getCart(activeClient.id).catch(() => null);
+      if (refreshedCart) setCartItems(mapCart(refreshedCart));
       setToast({
         variant: "error",
         title: "Compra não concluída",
@@ -736,132 +825,10 @@ function App() {
             ? error.message
             : "Não foi possível concluir o pedido.",
       });
+    } finally {
+      orderSubmission.current = false;
+      setIsSubmittingOrder(false);
     }
-    return;
-
-    if (cartItems.length === 0) {
-      setToast({
-        variant: "error",
-        title: "Compra não concluída",
-        message:
-          "Adicione produtos ao carrinho antes de confirmar o pagamento.",
-      });
-      return;
-    }
-
-    const selectedCards = cards;
-    const selectedAddress = address;
-
-    if (selectedCards.length === 0) {
-      setToast({
-        variant: "error",
-        title: "Compra não concluída",
-        message: "Selecione ao menos um cartão para realizar o pedido.",
-      });
-      return;
-    }
-
-    if (!selectedAddress) {
-      setToast({
-        variant: "error",
-        title: "Compra não concluída",
-        message: "Selecione um endereço de entrega para continuar.",
-      });
-      return;
-    }
-
-    const orderNumber = `#${String(orders.length + 1).padStart(5, "0")}`;
-    const createdAt = new Intl.DateTimeFormat("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date());
-
-    const nextOrder: Order = {
-      id: `order-${crypto.randomUUID()}`,
-      number: orderNumber,
-      createdAt,
-      status: "EM ABERTO",
-      items: cartItems,
-      paymentCards: selectedCards,
-      address: selectedAddress,
-      subtotal,
-      shippingTotal,
-      discountTotal: couponDiscountTotal,
-      total: finalTotal,
-    };
-
-    setOrders((current) => [nextOrder, ...current]);
-    setCartItems([]);
-    setSelectedCouponIds([]);
-    setToast({
-      variant: "success",
-      title: "Pedido realizado com sucesso",
-      message: `${orderNumber} foi realizado com sucesso.`,
-    });
-    openHomePage();
-  }
-
-  function handleCancelOrder(orderId: string) {
-    let cancelledOrderNumber = "";
-
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== orderId) {
-          return order;
-        }
-
-        cancelledOrderNumber = order.number;
-        return { ...order, status: "PEDIDO CANCELADO" };
-      }),
-    );
-
-    setToast({
-      variant: "success",
-      title: "Pedido cancelado",
-      message: `${cancelledOrderNumber} foi cancelado com sucesso.`,
-    });
-  }
-
-  function handleConfirmOrderReceived(orderId: string) {
-    let receivedOrderNumber = "";
-
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== orderId) {
-          return order;
-        }
-
-        receivedOrderNumber = order.number;
-        return { ...order, status: "PEDIDO RECEBIDO" };
-      }),
-    );
-
-    setToast({
-      variant: "success",
-      title: "Recebimento confirmado",
-      message: `${receivedOrderNumber} foi marcado como recebido.`,
-    });
-  }
-
-  function handleRequestOrderExchange(orderId: string) {
-    let exchangedOrderNumber = "";
-
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== orderId) {
-          return order;
-        }
-
-        exchangedOrderNumber = order.number;
-        return { ...order, status: "TROCA SOLICITADA" };
-      }),
-    );
-
-    setToast({
-      variant: "success",
-      title: "Troca solicitada",
-      message: `${exchangedOrderNumber} foi enviado para análise de troca.`,
-    });
   }
 
   function handleClientRegistered(client: ClientDetails) {
@@ -888,27 +855,6 @@ function App() {
     setActiveClient(null);
     setProfileMode("login");
     navigate("profile", "/login");
-  }
-
-  function handleAdminUpdateOrderStatus(orderId: string, nextStatus: string) {
-    let updatedOrderNumber = "";
-
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== orderId) {
-          return order;
-        }
-
-        updatedOrderNumber = order.number;
-        return { ...order, status: nextStatus };
-      }),
-    );
-
-    setToast({
-      variant: "success",
-      title: "Status atualizado",
-      message: `${updatedOrderNumber} agora está como ${nextStatus}.`,
-    });
   }
 
   const cartItemsCount = cartItems.reduce(
@@ -959,14 +905,15 @@ function App() {
         {currentView === "cart" ? (
           <CartPage
             cartItems={cartItems}
+            cartSnapshot={cartSnapshot}
             onBackToHome={openHomePage}
             onOpenCoupons={() => setIsCouponModalOpen(true)}
             onUpdateItemQuantity={handleUpdateCartItemQuantity}
             onRemoveItem={handleRemoveCartItem}
             subtotal={subtotal}
-            shippingTotal={shippingTotal}
-            couponDiscountTotal={couponDiscountTotal}
-            finalTotal={finalTotal}
+            shippingTotal={checkoutQuote?.shipping ?? shippingTotal}
+            couponDiscountTotal={checkoutQuote?.couponDiscount ?? couponDiscountTotal}
+            finalTotal={checkoutQuote?.total ?? finalTotal}
             selectedCouponsCount={selectedCouponIds.length}
             onProceedToCheckout={openCheckoutPage}
           />
@@ -977,9 +924,9 @@ function App() {
             client={activeClient}
             selectedCouponsCount={selectedCouponIds.length}
             subtotal={subtotal}
-            shippingTotal={shippingTotal}
-            couponDiscountTotal={couponDiscountTotal}
-            finalTotal={finalTotal}
+            shippingTotal={checkoutQuote?.shipping ?? shippingTotal}
+            couponDiscountTotal={checkoutQuote?.couponDiscount ?? couponDiscountTotal}
+            finalTotal={checkoutQuote?.total ?? finalTotal}
             onBackToCart={openCartPage}
             onOpenCoupons={() => setIsCouponModalOpen(true)}
             onClientChanged={(client) =>
@@ -988,7 +935,9 @@ function App() {
               )
             }
             onShowToast={setToast}
+            onDeliveryAddressSelected={(address) => setCheckoutAddressId(address.id)}
             onConfirmPurchase={handleConfirmPurchase}
+            isSubmitting={isSubmittingOrder}
           />
         ) : null}
 
@@ -996,12 +945,8 @@ function App() {
           activeClient ? (
             <ClientProfilePage
               client={activeClient}
-              orders={orders}
               onClientChanged={setActiveClient}
               onLogout={handleLogout}
-              onCancelOrder={handleCancelOrder}
-              onConfirmOrderReceived={handleConfirmOrderReceived}
-              onRequestOrderExchange={handleRequestOrderExchange}
               onShowToast={setToast}
             />
           ) : profileMode === "register" ? (
@@ -1030,7 +975,6 @@ function App() {
             orders={orders}
             activeSection={activeAdminSection}
             onSelectSection={setActiveAdminSection}
-            onUpdateOrderStatus={handleAdminUpdateOrderStatus}
             onClientChanged={handleAdminClientChanged}
           />
         ) : null}
@@ -1050,6 +994,7 @@ function App() {
         isOpen={isCouponModalOpen}
         coupons={availableCoupons}
         subtotal={subtotal}
+        purchaseTotal={couponPurchaseTotal}
         selectedCouponIds={selectedCouponIds}
         onClose={() => setIsCouponModalOpen(false)}
         onToggleCoupon={handleToggleCoupon}

@@ -5,6 +5,7 @@ type CouponModalProps = {
   isOpen: boolean;
   coupons: Coupon[];
   subtotal: number;
+  purchaseTotal: number;
   selectedCouponIds: string[];
   onClose: () => void;
   onToggleCoupon: (couponId: string) => void;
@@ -14,11 +15,16 @@ export function CouponModal({
   isOpen,
   coupons,
   subtotal,
+  purchaseTotal,
   selectedCouponIds,
   onClose,
   onToggleCoupon,
 }: CouponModalProps) {
   if (!isOpen) return null;
+
+  const selectedPromotionalCouponId = coupons.find(
+    (coupon) => coupon.type === "PROMOCIONAL" && selectedCouponIds.includes(coupon.id),
+  )?.id;
 
   return (
     <div
@@ -55,9 +61,34 @@ export function CouponModal({
           {coupons.map((coupon) => {
             const canUse = subtotal >= coupon.minimumSubtotal;
             const isSelected = selectedCouponIds.includes(coupon.id);
+            const blockedByPromotionalCoupon =
+              coupon.type === "PROMOCIONAL" &&
+              Boolean(selectedPromotionalCouponId) &&
+              selectedPromotionalCouponId !== coupon.id;
+            const candidateIds = [...selectedCouponIds, coupon.id];
+            const orderedCandidates = coupons
+              .filter((item) => candidateIds.includes(item.id))
+              .sort((first, second) => second.amount - first.amount);
+            let coveredValue = 0;
+            const retainedCandidateIds: string[] = [];
+            for (const candidate of orderedCandidates) {
+              if (coveredValue >= purchaseTotal) break;
+              retainedCandidateIds.push(candidate.id);
+              coveredValue += candidate.amount;
+            }
+            const blockedByCoveredPurchase =
+              purchaseTotal > 0 &&
+              !isSelected &&
+              !retainedCandidateIds.includes(coupon.id);
+            const isUnavailable =
+              !canUse || blockedByPromotionalCoupon || blockedByCoveredPurchase;
 
             return (
-              <article key={coupon.id} className="coupon-card">
+              <article
+                key={coupon.id}
+                data-cy={`coupon-${coupon.code}`}
+                className={`coupon-card${isUnavailable && !isSelected ? " is-disabled" : ""}`}
+              >
                 <div className="coupon-card-head">
                   <div>
                     <p className="coupon-code">{coupon.code}</p>
@@ -75,8 +106,10 @@ export function CouponModal({
                     {canUse ? (
                       <label className="coupon-select">
                         <input
+                          data-cy={`coupon-toggle-${coupon.code}`}
                           type="checkbox"
                           checked={isSelected}
+                          disabled={isUnavailable && !isSelected}
                           onChange={() => onToggleCoupon(coupon.id)}
                         />
                         <span>Aplicar na compra</span>
@@ -84,12 +117,16 @@ export function CouponModal({
                     ) : null}
                     <span
                       className={
-                        canUse
+                        !isUnavailable
                           ? "coupon-status coupon-status-valid"
                           : "coupon-status coupon-status-invalid"
                       }
                     >
-                      {canUse
+                      {blockedByPromotionalCoupon
+                        ? "Outro cupom promocional já está selecionado"
+                        : blockedByCoveredPurchase
+                        ? "Cupons de maior valor já cobrem a compra"
+                        : canUse
                         ? "Pode ser utilizado nesta compra"
                         : "Ainda indisponível para esta compra"}
                     </span>

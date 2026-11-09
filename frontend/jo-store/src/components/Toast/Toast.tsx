@@ -12,6 +12,7 @@ export function Toast({ toast }: ToastProps) {
 
   return (
     <div
+      key={`${toast.variant}:${toast.title}:${toast.message}`}
       className={`cart-toast cart-toast-${toast.variant}`}
       role="status"
       aria-live="polite"

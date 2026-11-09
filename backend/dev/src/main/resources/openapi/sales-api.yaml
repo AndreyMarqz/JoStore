@@ -1,0 +1,1278 @@
+openapi: "3.0.3"
+info:
+  title: "JoStore — Ciclo completo de vendas"
+  version: "1.0.0"
+  description: "RF e RN conforme DRS_LES_2_2026. Sessão local de demonstração; autenticação real ainda não faz parte deste contrato. Pagamento simulado: final 0000 reprova. Reservas padrão de 600 segundos, aviso nos últimos 300. Rotina automática valida pedidos e libera reservas. Operações de teste de relógio existem somente no perfil e2e e não são API de negócio."
+servers:
+  - url: "http://localhost:8080/api/v1"
+paths:
+  "/products":
+    get:
+      summary: "Consulta o catálogo"
+      parameters: []
+      responses:
+        "200":
+          description: "Consulta o catálogo"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Product"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/cart":
+    get:
+      summary: "RF0031/RNF0042 — Carrinho, reserva e itens removidos"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0031/RNF0042 — Carrinho, reserva e itens removidos"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Cart"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/cart/items":
+    post:
+      summary: "RF0031/RF0032/RN0031/RN0044 — Adiciona e reserva"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "201":
+          description: "RF0031/RF0032/RN0031/RN0044 — Adiciona e reserva"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Cart"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                productId:
+                  type: "string"
+                  format: "uuid"
+                size:
+                  type: "string"
+                  minLength: 1
+                quantity:
+                  type: "integer"
+                  minimum: 1
+                  maximum: 99
+              required:
+                - "productId"
+                - "size"
+                - "quantity"
+  "/customers/{customerId}/cart/items/{itemId}":
+    put:
+      summary: "RF0032 — Altera quantidade e reserva"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "itemId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0032 — Altera quantidade e reserva"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Cart"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                productId:
+                  type: "string"
+                  format: "uuid"
+                size:
+                  type: "string"
+                  minLength: 1
+                quantity:
+                  type: "integer"
+                  minimum: 1
+                  maximum: 99
+              required:
+                - "productId"
+                - "size"
+                - "quantity"
+    delete:
+      summary: "RN0045 — Remove todas as linhas do produto e libera reserva"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "itemId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "204":
+          description: "RN0045 — Remove todas as linhas do produto e libera reserva"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/orders/quote":
+    post:
+      summary: "RF0034/RN0032 — Revalida estoque e calcula R$15 + R$2/peça + R$10 fora de SP"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0034/RN0032 — Revalida estoque e calcula R$15 + R$2/peça + R$10 fora de SP"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Quote"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/QuoteRequest"
+  "/customers/{customerId}/orders":
+    post:
+      summary: "RF0038 — Cria pedido EM PROCESSAMENTO; validação automática posterior"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "201":
+          description: "RF0038 — Cria pedido EM PROCESSAMENTO; validação automática posterior"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Order"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CreateOrder"
+    get:
+      summary: "Consulta os pedidos do cliente"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 0
+            default: 0
+        - name: "size"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: "Consulta os pedidos do cliente"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/OrderPage"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/orders/{orderId}":
+    get:
+      summary: "Consulta pedido e histórico do cliente"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "orderId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "Consulta pedido e histórico do cliente"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Order"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/orders":
+    get:
+      summary: "Consulta administrativa paginada"
+      parameters:
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 0
+            default: 0
+        - name: "size"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: "customerId"
+          in: "query"
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "code"
+          in: "query"
+          schema:
+            type: "string"
+        - name: "status"
+          in: "query"
+          schema:
+            "$ref": "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: "Consulta administrativa paginada"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/OrderPage"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/orders/{id}":
+    get:
+      summary: "Consulta administrativa do pedido"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "Consulta administrativa do pedido"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Order"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/orders/{id}/dispatch":
+    post:
+      summary: "RF0039/RN0039 — APROVADA para EM TRANSPORTE"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0039/RN0039 — APROVADA para EM TRANSPORTE"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Order"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/orders/{id}/delivery-confirmation":
+    post:
+      summary: "RF0040/RN0040 — EM TRANSPORTE para ENTREGUE"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0040/RN0040 — EM TRANSPORTE para ENTREGUE"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Order"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/orders/{orderId}/exchanges":
+    post:
+      summary: "RF0041/RN0041/RN0043 — Solicita troca parcial ou total de itens entregues"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "orderId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0041/RN0041/RN0043 — Solicita troca parcial ou total de itens entregues"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Exchange"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ExchangeRequest"
+  "/customers/{customerId}/exchanges":
+    get:
+      summary: "Consulta trocas do cliente"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "Consulta trocas do cliente"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Exchange"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/exchanges":
+    get:
+      summary: "RF0043 — Consulta administrativa de trocas"
+      parameters:
+        - name: "status"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "EM_TROCA"
+              - "TROCA_AUTORIZADA"
+              - "TROCADO"
+      responses:
+        "200":
+          description: "RF0043 — Consulta administrativa de trocas"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Exchange"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/exchanges/{id}/authorize":
+    post:
+      summary: "RF0042/RN0046 — Autoriza troca e notifica cliente"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0042/RN0046 — Autoriza troca e notifica cliente"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Exchange"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/exchanges/{id}/receipt-confirmation":
+    post:
+      summary: "RF0044/RF0045/RF0054 — Recebe troca autorizada, emite cupom e aplica reentrada"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "RF0044/RF0045/RF0054 — Recebe troca autorizada, emite cupom e aplica reentrada"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Exchange"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ReceiptRequest"
+  "/customers/{customerId}/coupons":
+    get:
+      summary: "Consulta cupons disponíveis"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "Consulta cupons disponíveis"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Coupon"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/notifications":
+    get:
+      summary: "Consulta notificações de autorização"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "Consulta notificações de autorização"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Notification"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/notifications/{id}/read":
+    patch:
+      summary: "Marca notificação como lida"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "Marca notificação como lida"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/customers/{customerId}/checkout/addresses":
+    post:
+      summary: "RF0035 — Endereço novo durante checkout"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "saveToProfile"
+          in: "query"
+          schema:
+            type: "boolean"
+            default: true
+      responses:
+        "200":
+          description: "RF0035 — Endereço novo durante checkout"
+          content:
+            "application/json":
+              schema:
+                "$ref": "./customer-api.yaml#/components/schemas/AddressResponse"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "./customer-api.yaml#/components/schemas/AddressRequest"
+  "/customers/{customerId}/checkout/cards":
+    post:
+      summary: "RF0036 — Cartão novo durante checkout"
+      parameters:
+        - name: "customerId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "saveToProfile"
+          in: "query"
+          schema:
+            type: "boolean"
+            default: true
+      responses:
+        "200":
+          description: "RF0036 — Cartão novo durante checkout"
+          content:
+            "application/json":
+              schema:
+                "$ref": "./customer-api.yaml#/components/schemas/CardResponse"
+        "404":
+          description: "Recurso não encontrado ou não pertence ao cliente."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Regra de negócio violada: estado inválido, estoque, cupom, pagamento ou quantidade."
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "./customer-api.yaml#/components/schemas/CardCreateRequest"
+components:
+  schemas:
+    OrderStatus:
+      type: "string"
+      enum:
+        - "EM_PROCESSAMENTO"
+        - "APROVADA"
+        - "REPROVADA"
+        - "EM_TRANSPORTE"
+        - "ENTREGUE"
+        - "EM_TROCA"
+        - "TROCA_AUTORIZADA"
+        - "TROCADO"
+    Product:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        code:
+          type: "string"
+        name:
+          type: "string"
+        description:
+          type: "string"
+        price:
+          type: "number"
+          format: "double"
+        imageUrl:
+          type: "string"
+          nullable: true
+        availableQuantity:
+          type: "integer"
+      required:
+        - "id"
+        - "code"
+        - "name"
+        - "description"
+        - "price"
+        - "imageUrl"
+        - "availableQuantity"
+    CartItem:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        product:
+          "$ref": "#/components/schemas/Product"
+        size:
+          type: "string"
+        quantity:
+          type: "integer"
+        unitPrice:
+          type: "number"
+          format: "double"
+        total:
+          type: "number"
+          format: "double"
+      required:
+        - "id"
+        - "product"
+        - "size"
+        - "quantity"
+        - "unitPrice"
+        - "total"
+    RemovedItem:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        productId:
+          type: "string"
+          format: "uuid"
+        name:
+          type: "string"
+        size:
+          type: "string"
+        quantity:
+          type: "integer"
+        reason:
+          type: "string"
+      required:
+        - "id"
+        - "productId"
+        - "name"
+        - "size"
+        - "quantity"
+        - "reason"
+    Cart:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/CartItem"
+        subtotal:
+          type: "number"
+          format: "double"
+        expiresAt:
+          type: "string"
+          format: "date-time"
+          nullable: true
+        serverTime:
+          type: "string"
+          format: "date-time"
+        expirationWarning:
+          type: "boolean"
+        removedItems:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/RemovedItem"
+      required:
+        - "id"
+        - "items"
+        - "subtotal"
+        - "expiresAt"
+        - "serverTime"
+        - "expirationWarning"
+        - "removedItems"
+    Coupon:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        code:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+            - "TROCA"
+            - "PROMOCIONAL"
+        value:
+          type: "number"
+          format: "double"
+        description:
+          type: "string"
+      required:
+        - "id"
+        - "code"
+        - "type"
+        - "value"
+        - "description"
+    QuoteRequest:
+      type: "object"
+      properties:
+        deliveryAddressId:
+          type: "string"
+          format: "uuid"
+        couponIds:
+          type: "array"
+          items:
+            type: "string"
+            format: "uuid"
+      required:
+        - "deliveryAddressId"
+    Quote:
+      type: "object"
+      properties:
+        subtotal:
+          type: "number"
+          format: "double"
+        shipping:
+          type: "number"
+          format: "double"
+        couponDiscount:
+          type: "number"
+          format: "double"
+        total:
+          type: "number"
+          format: "double"
+        appliedCoupons:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/Coupon"
+      required:
+        - "subtotal"
+        - "shipping"
+        - "couponDiscount"
+        - "total"
+        - "appliedCoupons"
+    CardPayment:
+      type: "object"
+      properties:
+        cardId:
+          type: "string"
+          format: "uuid"
+        amount:
+          type: "number"
+          format: "double"
+          minimum: 0.01
+      required:
+        - "cardId"
+        - "amount"
+    CreateOrder:
+      type: "object"
+      properties:
+        quote:
+          "$ref": "#/components/schemas/QuoteRequest"
+        cardPayments:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/CardPayment"
+      required:
+        - "quote"
+        - "cardPayments"
+    History:
+      type: "object"
+      properties:
+        previousStatus:
+          type: "string"
+          nullable: true
+        status:
+          "$ref": "#/components/schemas/OrderStatus"
+        actor:
+          type: "string"
+        occurredAt:
+          type: "string"
+          format: "date-time"
+        description:
+          type: "string"
+      required:
+        - "previousStatus"
+        - "status"
+        - "actor"
+        - "occurredAt"
+        - "description"
+    Order:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        code:
+          type: "string"
+        status:
+          "$ref": "#/components/schemas/OrderStatus"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        deliveryAddress:
+          "$ref": "./customer-api.yaml#/components/schemas/AddressResponse"
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/CartItem"
+        payments:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              cardId:
+                type: "string"
+                format: "uuid"
+              description:
+                type: "string"
+              amount:
+                type: "number"
+                format: "double"
+            required:
+              - "cardId"
+              - "description"
+              - "amount"
+        coupons:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/Coupon"
+        subtotal:
+          type: "number"
+          format: "double"
+        shipping:
+          type: "number"
+          format: "double"
+        couponDiscount:
+          type: "number"
+          format: "double"
+        total:
+          type: "number"
+          format: "double"
+        generatedExchangeCoupon:
+          allOf:
+            - "$ref": "#/components/schemas/Coupon"
+          nullable: true
+        history:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/History"
+      required:
+        - "id"
+        - "code"
+        - "status"
+        - "createdAt"
+        - "deliveryAddress"
+        - "items"
+        - "payments"
+        - "coupons"
+        - "subtotal"
+        - "shipping"
+        - "couponDiscount"
+        - "total"
+        - "generatedExchangeCoupon"
+        - "history"
+    OrderPage:
+      type: "object"
+      properties:
+        content:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/Order"
+        totalPages:
+          type: "integer"
+        totalElements:
+          type: "integer"
+        number:
+          type: "integer"
+        size:
+          type: "integer"
+      required:
+        - "content"
+        - "totalPages"
+        - "totalElements"
+        - "number"
+        - "size"
+    ExchangeRequest:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderItemId:
+                type: "string"
+                format: "uuid"
+              quantity:
+                type: "integer"
+                minimum: 1
+            required:
+              - "orderItemId"
+              - "quantity"
+          minItems: 1
+      required:
+        - "items"
+    ReceiptRequest:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderItemId:
+                type: "string"
+                format: "uuid"
+              restock:
+                type: "boolean"
+            required:
+              - "orderItemId"
+              - "restock"
+          minItems: 1
+      required:
+        - "items"
+    Exchange:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        orderId:
+          type: "string"
+          format: "uuid"
+        orderCode:
+          type: "string"
+        customerId:
+          type: "string"
+          format: "uuid"
+        status:
+          type: "string"
+          enum:
+            - "EM_TROCA"
+            - "TROCA_AUTORIZADA"
+            - "TROCADO"
+        fullOrder:
+          type: "boolean"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        couponId:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderItemId:
+                type: "string"
+                format: "uuid"
+              quantity:
+                type: "integer"
+              name:
+                type: "string"
+              size:
+                type: "string"
+              unitPrice:
+                type: "number"
+                format: "double"
+              restock:
+                type: "boolean"
+                nullable: true
+            required:
+              - "orderItemId"
+              - "quantity"
+              - "name"
+              - "size"
+              - "unitPrice"
+              - "restock"
+      required:
+        - "id"
+        - "orderId"
+        - "orderCode"
+        - "customerId"
+        - "status"
+        - "fullOrder"
+        - "createdAt"
+        - "couponId"
+        - "items"
+    Notification:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        message:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        readAt:
+          type: "string"
+          format: "date-time"
+          nullable: true
+      required:
+        - "id"
+        - "message"
+        - "createdAt"
+        - "readAt"
+    Error:
+      "$ref": "./customer-api.yaml#/components/schemas/ApiError"

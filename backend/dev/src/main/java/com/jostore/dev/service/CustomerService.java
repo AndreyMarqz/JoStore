@@ -42,6 +42,8 @@ import com.jostore.dev.repository.CreditCardRepository;
 import com.jostore.dev.repository.CustomerRepository;
 import com.jostore.dev.repository.PublicPlaceTypeRepository;
 import com.jostore.dev.repository.ResidenceTypeRepository;
+import com.jostore.dev.repository.OperationLogRepository;
+import com.jostore.dev.model.audit.OperationLog;
 
 import jakarta.persistence.criteria.JoinType;
 
@@ -56,6 +58,7 @@ public class CustomerService {
     private final ResidenceTypeRepository residenceTypeRepository;
     private final PublicPlaceTypeRepository publicPlaceTypeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OperationLogRepository operationLogs;
 
     public CustomerService(
             CustomerRepository customerRepository,
@@ -63,13 +66,14 @@ public class CustomerService {
             CreditCardRepository creditCardRepository,
             ResidenceTypeRepository residenceTypeRepository,
             PublicPlaceTypeRepository publicPlaceTypeRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder, OperationLogRepository operationLogs) {
         this.customerRepository = customerRepository;
         this.addressRepository = addressRepository;
         this.creditCardRepository = creditCardRepository;
         this.residenceTypeRepository = residenceTypeRepository;
         this.publicPlaceTypeRepository = publicPlaceTypeRepository;
         this.passwordEncoder = passwordEncoder;
+        this.operationLogs = operationLogs;
     }
 
     @Transactional
@@ -190,8 +194,35 @@ public class CustomerService {
         Address address = toAddress(request);
         customer.addAddress(address);
         addressRepository.save(address);
+        operationLogs.save(new OperationLog(customerId, "INSERT", "ENDERECO", "Endereço adicionado ao perfil: " + address.getId()));
 
         return toResponse(customer);
+    }
+
+    @Transactional
+    public AddressResponseDto createCheckoutAddress(UUID customerId, AddressRequestDto request, boolean saveToProfile) {
+        Customer customer=findCustomer(customerId);
+        Address address=toAddress(request);
+        if (!address.getPurposes().contains(com.jostore.dev.model.enums.PurposeEnum.ENTREGA))
+            throw new BusinessRuleException("O endereço deve possuir finalidade de entrega.");
+        address.setCustomer(customer);
+        if (!saveToProfile) address.useOnlyForCheckout();
+        addressRepository.saveAndFlush(address);
+        operationLogs.save(new OperationLog(customerId, "INSERT", "ENDERECO", "Endereço de checkout: " + address.getId() + "; incorporado ao perfil: " + saveToProfile));
+        return toAddressResponse(address);
+    }
+
+    @Transactional
+    public CreditCardResponseDto createCheckoutCard(UUID customerId, CreditCardRequestDto request, boolean saveToProfile) {
+        Customer customer=findCustomer(customerId);
+        validateCardNumber(request.number());
+        CreditCard card=new CreditCard(request.number(),request.holder().trim(),request.brand());
+        card.setCustomer(customer);
+        if (!saveToProfile) card.useOnlyForCheckout();
+        else if (customer.getCreditCards().stream().noneMatch(CreditCard::isSavedToProfile)) card.makePreferred();
+        creditCardRepository.saveAndFlush(card);
+        operationLogs.save(new OperationLog(customerId, "INSERT", "CARTAO", "Cartão de checkout: " + card.getId() + "; incorporado ao perfil: " + saveToProfile));
+        return toCreditCardResponse(card);
     }
 
     @Transactional
@@ -232,12 +263,13 @@ public class CustomerService {
         validateCardNumber(request.number());
         CreditCard creditCard = new CreditCard(request.number(), request.holder().trim(), request.brand());
 
-        if (customer.getCreditCards().isEmpty()) {
+        if (customer.getCreditCards().stream().noneMatch(CreditCard::isSavedToProfile)) {
             creditCard.makePreferred();
         }
 
         customer.addCreditCard(creditCard);
         creditCardRepository.save(creditCard);
+        operationLogs.save(new OperationLog(customerId, "INSERT", "CARTAO", "Cartão adicionado ao perfil: " + creditCard.getId()));
         return toResponse(customer);
     }
 
@@ -418,9 +450,11 @@ public class CustomerService {
 
     private CustomerResponseDto toResponse(Customer customer) {
         List<AddressResponseDto> addresses = customer.getAddresses().stream()
+                .filter(Address::isSavedToProfile)
                 .map(this::toAddressResponse)
                 .toList();
         List<CreditCardResponseDto> cards = customer.getCreditCards().stream()
+                .filter(CreditCard::isSavedToProfile)
                 .map(this::toCreditCardResponse)
                 .toList();
         PhoneResponseDto phone = customer.getPhones().isEmpty() ? null : toPhoneResponse(customer.getPhones().getFirst());

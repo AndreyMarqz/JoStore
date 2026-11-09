@@ -31,4 +31,13 @@ public class Inventory {
 
     @Column(name = "est_quantidade_disponivel", nullable = false)
     private int availableQuantity;
+    public void decrease(int quantity) {
+        if (quantity <= 0 || quantity > availableQuantity)
+            throw new com.jostore.dev.exception.BusinessRuleException("Estoque insuficiente para aprovar o pedido.");
+        availableQuantity -= quantity;
+    }
+    public void increase(int quantity) {
+        if (quantity <= 0) throw new IllegalArgumentException("Quantidade deve ser positiva.");
+        availableQuantity += quantity;
+    }
 }

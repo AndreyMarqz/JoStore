@@ -320,6 +320,8 @@
 
 .checkout-card-preference {
   display: inline-flex;
+  width: fit-content;
+  justify-self: start;
   align-items: center;
   gap: 7px;
   color: var(--color-text);
